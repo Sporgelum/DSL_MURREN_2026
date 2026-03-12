@@ -102,6 +102,13 @@ def main():
                         help="Disable Pearson pre-screening (test all pairs).")
     parser.add_argument("--prescreen-threshold", type=float, default=0.3,
                         help="Pre-screen |r| threshold (default: 0.3).")
+    parser.add_argument("--prescreen-method", type=str, default="pearson",
+                        choices=["pearson", "spearman"],
+                        help="Correlation method for pre-screening (default: pearson).")
+    parser.add_argument("--max-pairs", type=int, default=5_000_000,
+                        help="Max candidate pairs per study after pre-screen "
+                             "(default: 5000000). Excess pairs are capped by "
+                             "raising the |r| threshold dynamically.")
 
     # Permutation
     parser.add_argument("--perms", type=int, default=10000,
@@ -161,6 +168,8 @@ def main():
     # Pre-screen
     cfg.prescreen.enabled = not args.no_prescreen
     cfg.prescreen.threshold = args.prescreen_threshold
+    cfg.prescreen.method = args.prescreen_method
+    cfg.prescreen.max_pairs = args.max_pairs
 
     # Permutation
     cfg.permutation.n_permutations = args.perms
