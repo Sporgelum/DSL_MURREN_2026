@@ -1,0 +1,100 @@
+# ── Python bytecode & packaging ──────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+build/
+dist/
+
+# ── Jupyter checkpoints ─────────────────────────
+.ipynb_checkpoints/
+
+# ── Marimo session cache ────────────────────────
+__marimo__/
+
+# ── IDE & OS artefacts ──────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.env
+Thumbs.db
+
+# ── Tabular data ────────────────────────────────
+*.csv
+*.tsv
+*.mtx
+
+# ── Network / graph files ───────────────────────
+*.graphml
+
+# ── Gene-set annotation files ───────────────────
+*.gmt
+
+# ── Serialised arrays & model weights ───────────
+*.npy
+*.npz
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.pt
+*.pth
+*.pb
+*.bin
+*.onnx
+
+# ── Archives ────────────────────────────────────
+*.tgz
+*.tar.gz
+*.zip
+
+# ── Images (plots, photos, diagrams) ────────────
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tif
+*.tiff
+*.svg
+
+# ── Logs ────────────────────────────────────────
+*.log
+
+# ── JSON data / session caches ──────────────────
+# (keep structural JSON; ignore training histories & session caches)
+*_history.json
+*.py.json
+
+# ── Day 1 raw sensor data ──────────────────────
+Day1/Data/
+
+# ── Day 2 large assets ─────────────────────────
+Day2/ML3/
+Day2/RNN/
+Day2/inception/
+Day2/tutorial_III/
+Day2/bonus_autoencoder_tutorial_files/ML3/
+Day2/bonus_autoencoder_tutorial_files/RNN/
+Day2/bonus_autoencoder_tutorial_files/inception/
+
+# ── Day 3 large assets ─────────────────────────
+Day3/ML3/
+Day3/RNN/
+Day3/inception/
+
+# ── Project plan data & outputs ─────────────────
+Project_plan/checkpoints/
+Project_plan/counts_and_metadata/
+Project_plan/data/raw/
+
+# ── Generic output directories ──────────────────
+output/
+results/
+logs/
+checkpoints/

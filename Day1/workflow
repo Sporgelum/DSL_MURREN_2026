@@ -1,0 +1,11 @@
+digraph {
+	A [label="Load Data"]
+	B [label="Preprocess Data"]
+	C [label="Train Model Using Random Forest and Logistic Regression and so on"]
+	D [label="Evaluate Model"]
+	E [label="Extract Features"]
+	A -> B
+	B -> C
+	C -> D
+	C -> E
+}
