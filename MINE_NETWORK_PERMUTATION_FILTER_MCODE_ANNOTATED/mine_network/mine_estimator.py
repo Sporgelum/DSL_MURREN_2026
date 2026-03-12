@@ -185,6 +185,7 @@ def estimate_mi_batch(
     model = BatchedMINE(B, hidden_dim).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     ema = torch.ones(B, device=device)
+    loss_curve = []  # per-epoch mean loss for diagnostics
 
     for _ in range(n_epochs):
         optimizer.zero_grad()
@@ -211,6 +212,7 @@ def estimate_mi_batch(
 
         mi = joint_mean - (et / ema_snap).log()
         loss = -mi.mean()
+        loss_curve.append(float(loss.detach()))
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
         optimizer.step()
@@ -228,7 +230,14 @@ def estimate_mi_batch(
             mi_acc += T_j.mean(dim=1) - T_m.exp().mean(dim=1).log()
         mi_acc /= n_eval_shuffles
 
-    return mi_acc.clamp(min=0).cpu().numpy()
+    mi_result = mi_acc.clamp(min=0).cpu().numpy()
+    diagnostics = {
+        "loss_curve": loss_curve,
+        "final_mi_mean": float(mi_result.mean()),
+        "final_mi_std": float(mi_result.std()),
+        "final_mi_max": float(mi_result.max()),
+    }
+    return mi_result, diagnostics
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -270,6 +279,7 @@ def estimate_mi_for_pairs(
     batch_size = mine_cfg.batch_pairs
     n_batches = (n_pairs + batch_size - 1) // batch_size
     mi_all = np.zeros(n_pairs, dtype=np.float32)
+    all_diagnostics = []
 
     expr_t = torch.from_numpy(expr_matrix).float().to(device)
 
@@ -284,7 +294,7 @@ def estimate_mi_for_pairs(
         gi = expr_t[idx_i]  # (actual_B, N_samples)
         gj = expr_t[idx_j]
 
-        mi_batch = estimate_mi_batch(
+        mi_batch, batch_diag = estimate_mi_batch(
             gi, gj,
             hidden_dim=mine_cfg.hidden_dim,
             n_epochs=mine_cfg.n_epochs,
@@ -294,9 +304,14 @@ def estimate_mi_for_pairs(
             n_eval_shuffles=mine_cfg.n_eval_shuffles,
         )
         mi_all[start:end] = mi_batch[:actual_B]
+        batch_diag["batch_id"] = b
+        batch_diag["n_pairs"] = actual_B
+        all_diagnostics.append(batch_diag)
 
         if verbose and (b + 1) % max(1, n_batches // 10) == 0:
             pct = (b + 1) / n_batches * 100
-            print(f"  MINE progress: {b+1}/{n_batches} batches ({pct:.0f}%)")
+            last_loss = batch_diag["loss_curve"][-1] if batch_diag["loss_curve"] else float("nan")
+            print(f"  MINE progress: {b+1}/{n_batches} batches ({pct:.0f}%) "
+                  f"| last_loss={last_loss:.4f} | MI_mean={batch_diag['final_mi_mean']:.4f}")
 
-    return mi_all
+    return mi_all, all_diagnostics

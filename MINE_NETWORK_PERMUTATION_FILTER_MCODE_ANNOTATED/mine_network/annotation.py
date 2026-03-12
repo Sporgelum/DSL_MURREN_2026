@@ -51,9 +51,114 @@ pathways, functional categories, or known gene signatures.
 """
 
 import os
+import time
 import numpy as np
 import pandas as pd
+from pathlib import Path
+from urllib.request import urlopen, Request
+from urllib.error import URLError
 from scipy.stats import hypergeom
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Available Enrichr libraries
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ENRICHR_LIBRARIES = {
+    "GO_Biological_Process_2023": "GO Biological Process",
+    "KEGG_2021_Human": "KEGG",
+    "Reactome_2022": "Reactome",
+    "WikiPathway_2023_Human": "WikiPathways",
+    "MSigDB_Hallmark_2020": "MSigDB Hallmark",
+}
+
+ENRICHR_BASE_URL = "https://maayanlab.cloud/Enrichr/geneSetLibrary"
+
+
+def download_enrichr_library(library_name: str, cache_dir: str) -> str:
+    """
+    Download a single gene-set library from the Enrichr API.
+
+    Files are cached locally so repeated calls are free.
+
+    Parameters
+    ----------
+    library_name : str
+        Exact Enrichr library name (e.g. ``"GO_Biological_Process_2023"``).
+    cache_dir : str
+        Directory to store downloaded GMT files.
+
+    Returns
+    -------
+    str or None
+        Path to the cached GMT file, or None if download failed.
+    """
+    cache_path = Path(cache_dir) / f"{library_name}.gmt"
+    if cache_path.exists():
+        print(f"  [CACHE HIT] {library_name} → {cache_path}")
+        return str(cache_path)
+
+    Path(cache_dir).mkdir(parents=True, exist_ok=True)
+    url = f"{ENRICHR_BASE_URL}?mode=text&libraryName={library_name}"
+
+    print(f"  Downloading {library_name} from Enrichr...")
+    for attempt in range(3):
+        try:
+            req = Request(url, headers={"User-Agent": "MINE-Network-Pipeline/1.0"})
+            with urlopen(req, timeout=60) as resp:
+                text = resp.read().decode("utf-8")
+            if len(text) > 100:
+                cache_path.write_text(text, encoding="utf-8")
+                print(f"  [OK] {library_name} → {cache_path} "
+                      f"({len(text):,} chars)")
+                return str(cache_path)
+            else:
+                print(f"  Attempt {attempt+1}: response too short ({len(text)} chars)")
+                time.sleep(2)
+        except (URLError, OSError) as e:
+            print(f"  Attempt {attempt+1}: {e}")
+            time.sleep(3)
+
+    print(f"  [WARN] Failed to download {library_name} after 3 attempts")
+    return None
+
+
+def download_enrichr_libraries(
+    library_names: list = None,
+    cache_dir: str = "gmt_cache",
+) -> list:
+    """
+    Download multiple Enrichr gene-set libraries.
+
+    Parameters
+    ----------
+    library_names : list[str] or None
+        Enrichr library names.  If None, downloads all from
+        ``ENRICHR_LIBRARIES``.
+    cache_dir : str
+        Cache directory for GMT files.
+
+    Returns
+    -------
+    list[str]
+        Paths to successfully downloaded/cached GMT files.
+    """
+    if library_names is None:
+        library_names = list(ENRICHR_LIBRARIES.keys())
+
+    print(f"[GMT] Downloading {len(library_names)} Enrichr libraries → {cache_dir}/")
+    paths = []
+    for name in library_names:
+        p = download_enrichr_library(name, cache_dir)
+        if p:
+            paths.append(p)
+    print(f"[GMT] {len(paths)}/{len(library_names)} libraries ready")
+    return paths
+
+
+def list_available_libraries() -> dict:
+    """Return the built-in Enrichr library catalogue."""
+    return dict(ENRICHR_LIBRARIES)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

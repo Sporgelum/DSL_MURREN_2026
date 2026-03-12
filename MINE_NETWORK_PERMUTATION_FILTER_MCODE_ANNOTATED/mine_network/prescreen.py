@@ -26,13 +26,14 @@ Pairs exceeding the threshold are collected.  If the total exceeds
 """
 
 import numpy as np
-from joblib import Parallel, delayed
 import time
 
 
 def _pearson_row(i: int, X: np.ndarray, n_genes: int) -> np.ndarray:
     """
     Compute |Pearson r| between gene i and genes i+1 … n-1.
+
+    Uses vectorised NumPy dot products for speed.
 
     Parameters
     ----------
@@ -54,19 +55,15 @@ def _pearson_row(i: int, X: np.ndarray, n_genes: int) -> np.ndarray:
     if xi_norm == 0:
         return np.zeros(n_genes - i - 1, dtype=np.float32)
 
-    results = np.empty(n_genes - i - 1, dtype=np.float32)
-    for j_offset in range(n_genes - i - 1):
-        j = i + 1 + j_offset
-        xj = X[j]
-        xj_centered = xj - xj.mean()
-        xj_norm = np.sqrt(np.dot(xj_centered, xj_centered))
-        if xj_norm == 0:
-            results[j_offset] = 0.0
-        else:
-            results[j_offset] = abs(
-                np.dot(xi_centered, xj_centered) / (xi_norm * xj_norm)
-            )
-    return results
+    # Vectorised: correlate gene i with all genes j > i at once
+    Xj = X[i + 1:]
+    Xj_centered = Xj - Xj.mean(axis=1, keepdims=True)
+    Xj_norms = np.sqrt((Xj_centered ** 2).sum(axis=1))
+    # Avoid division by zero
+    safe_norms = np.where(Xj_norms == 0, 1.0, Xj_norms)
+    r = np.abs(Xj_centered @ xi_centered / (xi_norm * safe_norms))
+    r[Xj_norms == 0] = 0.0
+    return r.astype(np.float32)
 
 
 def prescreen_pairs(
@@ -115,43 +112,72 @@ def prescreen_pairs(
 
     t0 = time.time()
 
-    # Parallel row-wise computation
-    row_results = Parallel(n_jobs=n_jobs, verbose=0)(
-        delayed(_pearson_row)(i, expr_matrix, n_genes)
-        for i in range(n_genes - 1)
-    )
+    # Centre and normalise once for all genes
+    X_c = expr_matrix - expr_matrix.mean(axis=1, keepdims=True)
+    norms = np.sqrt((X_c ** 2).sum(axis=1))
+    safe_norms = np.where(norms == 0, 1.0, norms)
+    X_normed = X_c / safe_norms[:, None]  # (G, S) — unit-norm rows
 
-    # Collect pairs above threshold
-    pairs = []
-    for i, r_vals in enumerate(row_results):
-        above = np.where(r_vals > threshold)[0]
-        for offset in above:
-            j = i + 1 + offset
-            pairs.append((i, j))
+    # Chunked matrix-multiply approach: compute |r| block by block
+    CHUNK = 1000
+    pair_i_list = []
+    pair_j_list = []
+    pair_r_list = []
 
-    pair_indices = (
-        np.array(pairs, dtype=np.int32) if pairs
-        else np.empty((0, 2), dtype=np.int32)
-    )
+    for i_start in range(0, n_genes - 1, CHUNK):
+        i_end = min(i_start + CHUNK, n_genes - 1)
+        block = X_normed[i_start:i_end]   # (chunk, S)
+        rest = X_normed[i_start + 1:]     # (G - i_start - 1, S)
+        R = np.abs(block @ rest.T)        # (chunk, G - i_start - 1)
+
+        for local_i in range(i_end - i_start):
+            global_i = i_start + local_i
+            offset = global_i - i_start
+            row = R[local_i, offset:]
+            above = np.where(row > threshold)[0]
+            if len(above) > 0:
+                js = above + global_i + 1
+                pair_i_list.append(np.full(len(above), global_i, dtype=np.int32))
+                pair_j_list.append(js.astype(np.int32))
+                pair_r_list.append(row[above].astype(np.float32))
+
+        if verbose and (i_start // CHUNK) % 10 == 0:
+            n_so_far = sum(len(x) for x in pair_i_list)
+            pct = i_start / n_genes * 100
+            print(f"    chunk {i_start:,}/{n_genes:,} ({pct:.0f}%) — "
+                  f"{n_so_far:,} pairs so far")
+
+    # Concatenate
+    if pair_i_list:
+        all_i = np.concatenate(pair_i_list)
+        all_j = np.concatenate(pair_j_list)
+        all_r = np.concatenate(pair_r_list)
+    else:
+        all_i = np.array([], dtype=np.int32)
+        all_j = np.array([], dtype=np.int32)
+        all_r = np.array([], dtype=np.float32)
 
     elapsed = time.time() - t0
+    n_found = len(all_i)
     if verbose:
-        print(f"  Pre-screen: {len(pair_indices):,} pairs above |r| > {threshold} "
+        print(f"  Pre-screen: {n_found:,} pairs above |r| > {threshold} "
               f"in {elapsed:.1f}s")
 
     # Dynamic threshold raise if too many pairs
-    if len(pair_indices) > max_pairs and len(pair_indices) > 0:
-        r_values = []
-        for i, r_vals in enumerate(row_results):
-            above = np.where(r_vals > threshold)[0]
-            r_values.extend(r_vals[above])
-        r_values = np.array(r_values)
-        new_threshold = np.sort(r_values)[-max_pairs]
-        mask = r_values >= new_threshold
-        pair_indices = pair_indices[mask]
+    if n_found > max_pairs:
+        # Use partial sort (O(n)) instead of full sort
+        cutoff_idx = n_found - max_pairs
+        r_partition = np.argpartition(all_r, cutoff_idx)
+        keep = r_partition[cutoff_idx:]
+        all_i = all_i[keep]
+        all_j = all_j[keep]
+        all_r = all_r[keep]
+        new_threshold = all_r.min()
         if verbose:
-            print(f"  Capped to {max_pairs:,} pairs "
+            print(f"  Capped to {len(all_i):,} pairs "
                   f"(raised threshold to |r| > {new_threshold:.3f})")
+
+    pair_indices = np.column_stack([all_i, all_j]) if len(all_i) > 0 else np.empty((0, 2), dtype=np.int32)
 
     return pair_indices
 

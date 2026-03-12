@@ -104,8 +104,8 @@ def main():
                         help="Pre-screen |r| threshold (default: 0.3).")
 
     # Permutation
-    parser.add_argument("--perms", type=int, default=1000,
-                        help="Number of permutations (default: 1000).")
+    parser.add_argument("--perms", type=int, default=10000,
+                        help="Number of permutations (default: 10000).")
     parser.add_argument("--pval", type=float, default=0.001,
                         help="P-value threshold (default: 0.001).")
     parser.add_argument("--mode", type=str, default="global",
@@ -121,6 +121,12 @@ def main():
     # Annotation
     parser.add_argument("--gmt", type=str, nargs="*", default=[],
                         help="GMT gene-set files for module annotation.")
+    parser.add_argument("--download-gmt", action="store_true",
+                        help="Download gene-set libraries from Enrichr API.")
+    parser.add_argument("--enrichr-libs", type=str, nargs="*", default=[],
+                        help="Specific Enrichr library names to download. "
+                             "If --download-gmt is set without this, downloads "
+                             "all defaults (GO, KEGG, Reactome, WikiPathway, MSigDB Hallmark).")
 
     args = parser.parse_args()
 
@@ -168,6 +174,10 @@ def main():
     # Annotation
     if args.gmt:
         cfg.annotation.gmt_paths = args.gmt
+    if args.download_gmt:
+        cfg.annotation.download_enrichr = True
+        if args.enrichr_libs:
+            cfg.annotation.enrichr_libraries = args.enrichr_libs
 
     # ── Run ──
     run_pipeline(cfg)

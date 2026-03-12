@@ -122,7 +122,7 @@ def build_global_null(
         perm = torch.argsort(torch.rand(B, n_samples, device=device), dim=1)
         gj_perm = torch.gather(gj, 1, perm)
 
-        mi_batch = estimate_mi_batch(
+        mi_batch, _ = estimate_mi_batch(
             gi, gj_perm,
             hidden_dim=mine_cfg.hidden_dim,
             n_epochs=mine_cfg.n_epochs,
@@ -212,7 +212,7 @@ def build_per_pair_null(
             perm = torch.argsort(torch.rand(B, n_samples, device=device), dim=1)
             gj_perm = torch.gather(gj, 1, perm)
 
-            mi_batch = estimate_mi_batch(
+            mi_batch, _ = estimate_mi_batch(
                 gi, gj_perm,
                 hidden_dim=mine_cfg.hidden_dim,
                 n_epochs=mine_cfg.n_epochs,

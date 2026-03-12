@@ -134,6 +134,83 @@ def format_time(seconds: float) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# MINE training diagnostics
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def save_mine_diagnostics(
+    diagnostics: list,
+    study_name: str,
+    output_dir: str,
+) -> None:
+    """
+    Save MINE training diagnostics (loss curves, MI statistics per batch).
+
+    Produces two files:
+      - ``mine_diagnostics_{study}.tsv``  — per-batch summary
+      - ``mine_loss_curve_{study}.tsv``   — epoch-level loss (averaged)
+
+    Parameters
+    ----------
+    diagnostics : list[dict]
+        Each dict has: batch_id, n_pairs, loss_curve, final_mi_mean,
+        final_mi_std, final_mi_max.
+    study_name : str
+        Study identifier.
+    output_dir : str
+        Output directory.
+    """
+    import json
+
+    diag_dir = os.path.join(output_dir, "mine_diagnostics")
+    os.makedirs(diag_dir, exist_ok=True)
+
+    # Per-batch summary table
+    rows = []
+    for d in diagnostics:
+        lc = d["loss_curve"]
+        rows.append({
+            "batch_id": d["batch_id"],
+            "n_pairs": d["n_pairs"],
+            "initial_loss": lc[0] if lc else float("nan"),
+            "final_loss": lc[-1] if lc else float("nan"),
+            "loss_reduction": (lc[0] - lc[-1]) if lc else float("nan"),
+            "final_mi_mean": d["final_mi_mean"],
+            "final_mi_std": d["final_mi_std"],
+            "final_mi_max": d["final_mi_max"],
+        })
+    df = pd.DataFrame(rows)
+    batch_path = os.path.join(diag_dir, f"mine_batch_summary_{study_name}.tsv")
+    df.to_csv(batch_path, sep="\t", index=False)
+    print(f"[SAVED] {batch_path}")
+
+    # Aggregate loss curve (average across batches, per epoch)
+    max_epochs = max(len(d["loss_curve"]) for d in diagnostics) if diagnostics else 0
+    if max_epochs > 0:
+        epoch_losses = np.full((len(diagnostics), max_epochs), np.nan)
+        for i, d in enumerate(diagnostics):
+            lc = d["loss_curve"]
+            epoch_losses[i, :len(lc)] = lc
+        mean_loss = np.nanmean(epoch_losses, axis=0)
+        std_loss = np.nanstd(epoch_losses, axis=0)
+
+        lc_df = pd.DataFrame({
+            "epoch": np.arange(max_epochs),
+            "mean_loss": mean_loss,
+            "std_loss": std_loss,
+            "mean_mi": -mean_loss,  # loss = -MI, so MI ≈ -loss
+        })
+        lc_path = os.path.join(diag_dir, f"mine_loss_curve_{study_name}.tsv")
+        lc_df.to_csv(lc_path, sep="\t", index=False)
+        print(f"[SAVED] {lc_path}")
+
+    # Also save full raw diagnostics as JSON for detailed analysis
+    raw_path = os.path.join(diag_dir, f"mine_raw_diagnostics_{study_name}.json")
+    with open(raw_path, "w", encoding="utf-8") as f:
+        json.dump(diagnostics, f, indent=2, default=str)
+    print(f"[SAVED] {raw_path}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Per-study saving
 # ═══════════════════════════════════════════════════════════════════════════════
 

@@ -52,10 +52,11 @@ from .permutation import (
 from .prescreen import prescreen_pairs, all_pairs
 from .network import filter_edges, build_edgelist, apply_bh_fdr, build_master_network
 from .mcode import mcode
-from .annotation import load_multiple_gmt, annotate_modules, save_annotations
+from .annotation import load_multiple_gmt, annotate_modules, save_annotations, download_enrichr_libraries
 from .io_utils import (
     TeeLogger, Timer, format_time,
     save_null_qc, save_study_results, save_master_results, save_report,
+    save_mine_diagnostics,
 )
 
 
@@ -167,7 +168,7 @@ def run_pipeline(cfg: PipelineConfig) -> dict:
 
         # ── MINE MI estimation ──
         with Timer(f"{study_name}: MINE MI estimation ({n_cand:,} pairs)", timings):
-            mi_values = estimate_mi_for_pairs(
+            mi_values, mine_diag = estimate_mi_for_pairs(
                 X, pair_indices, cfg.mine, device, verbose=True,
             )
             pos = mi_values[mi_values > 0]
@@ -175,6 +176,8 @@ def run_pipeline(cfg: PipelineConfig) -> dict:
                 f"{pos.min():.4f} – {pos.max():.4f}" if len(pos) > 0
                 else "all zero"
             )
+            # Save MINE training diagnostics
+            save_mine_diagnostics(mine_diag, study_name, cfg.output_dir)
 
         # ── Permutation null + p-values ──
         with Timer(f"{study_name}: permutation null ({cfg.permutation.mode}, "
@@ -304,6 +307,18 @@ def run_pipeline(cfg: PipelineConfig) -> dict:
         info["Master: MCODE modules"] = str(len(modules))
 
     # ── Step 4: Annotation ──
+    # Download GMT files from Enrichr if requested
+    if cfg.annotation.download_enrichr:
+        with Timer("Download Enrichr gene-set libraries", timings):
+            gmt_dir = os.path.join(cfg.output_dir, "gmt_cache")
+            downloaded = download_enrichr_libraries(
+                cfg.annotation.enrichr_libraries or None,
+                cache_dir=gmt_dir,
+            )
+            cfg.annotation.gmt_paths = list(set(
+                cfg.annotation.gmt_paths + downloaded
+            ))
+
     if cfg.annotation.gmt_paths:
         with Timer("Module annotation (enrichment)", timings):
             gene_sets = load_multiple_gmt(cfg.annotation.gmt_paths)

@@ -39,12 +39,13 @@ Their MI estimates will be noisy, but the multi-study ≥ 3 filter acts as a
 strong meta-analytic safeguard — edges must replicate across independent
 cohorts that often have larger sample sizes.
 
-Why 1 000 permutations?
------------------------
-With B = 1 000 the minimum resolvable p-value is ~1e-3, which exactly
-matches the p-value threshold.  For stricter thresholds, increase to
-10 000+ permutations.  Using a global null (Section 4c) makes this
-feasible even for large gene counts.
+Why 10 000 permutations?
+------------------------
+With B = 10 000 the minimum resolvable p-value is ~1e-4, giving
+substantially finer resolution than the 0.001 threshold.  This avoids
+tied p-values at the boundary and provides a more reliable null.
+Using a global null (Section 4c) makes this feasible even for large
+gene counts.
 """
 
 from dataclasses import dataclass, field
@@ -127,7 +128,7 @@ class PrescreenConfig:
     enabled: bool = True
     method: str = "pearson"
     threshold: float = 0.3
-    max_pairs: int = 500_000
+    max_pairs: int = 5_000_000
 
 
 @dataclass
@@ -158,7 +159,7 @@ class PermutationConfig:
     mode : str
         "global" (one distribution per study) or "per_pair" (per gene pair).
     """
-    n_permutations: int = 1_000
+    n_permutations: int = 10_000
     seed: int = 42
     p_value_threshold: float = 0.001
     mode: str = "global"
@@ -241,6 +242,14 @@ class AnnotationConfig:
     ----------
     gmt_paths : list[str]
         Paths to GMT gene-set files.  Multiple collections supported.
+    download_enrichr : bool
+        If True, automatically download gene-set libraries from the
+        Enrichr API (Ma'ayan Lab) before annotation.
+    enrichr_libraries : list[str] or None
+        Specific Enrichr library names to download.  If None and
+        ``download_enrichr`` is True, downloads the default set:
+        GO_Biological_Process_2023, KEGG_2021_Human, Reactome_2022,
+        WikiPathway_2023_Human, MSigDB_Hallmark_2020.
     fdr_threshold : float
         Maximum BH-adjusted p-value to report an enrichment.
     min_overlap : int
@@ -250,6 +259,8 @@ class AnnotationConfig:
         If None, all genes in the expression matrix are used.
     """
     gmt_paths: list = field(default_factory=list)
+    download_enrichr: bool = False
+    enrichr_libraries: list = field(default_factory=list)
     fdr_threshold: float = 0.05
     min_overlap: int = 2
     background_genes: str = None
