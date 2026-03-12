@@ -326,3 +326,9 @@ The following enhancements were made after the first working version:
 # First tests:
 
 & "C:\Users\emari\OneDrive - Universitaet Bern (1)\Documents\Environments\scimilarity_2024_local\Scripts\python.exe" run_pipeline.py --output ./output --device cuda --perms 10000 --mode global --pval 0.001 --epochs 200 --batch-pairs 512 --prescreen-threshold 0.9 
+#  first result
+38,342 edges across 5,014 genes — edge appears in ≥ 5 of 17 studies
+Extreme hub structure:
+ENSSSCG00000027172: miRNA degree 3,977 (connected to 79% of all nodes!)
+ENSSSCG00000036894: miRNA degree 3,791
+ENSSSCG00000045186: not-annotated degree 3,663
