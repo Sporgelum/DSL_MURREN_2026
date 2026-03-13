@@ -215,7 +215,13 @@ results = run_pipeline(cfg)
 | `--epochs` | 200 | MINE training epochs |
 | `--batch-pairs` | 512 | Gene pairs per batch |
 | `--no-prescreen` | (off) | Disable Pearson pre-screening |
+| `--prescreen-method` | `pearson` | Pre-screen correlation method (`pearson` or `spearman`) |
 | `--prescreen-threshold` | 0.3 | Pre-screen \|r\| cutoff |
+| `--max-pairs` | 5000000 | Hard cap on candidate pairs after pre-screen |
+| `--mad-top-genes` | (off) | Keep top-N genes by MAD before study splitting |
+| `--qc-preplot` | (off) | Save pre-filter 3-panel sample QC figure |
+| `--qc-postplot` | (off) | Save post-filter 3-panel sample QC figure |
+| `--qc-quantiles` | 200 | Quantile points for QC sample distribution lines |
 | `--perms` | 10000 | Permutation count |
 | `--pval` | 0.001 | P-value threshold |
 | `--mode` | `global` | `global` or `per_pair` |
@@ -235,6 +241,7 @@ All parameters are structured in typed dataclasses (see `mine_network/config.py`
 PipelineConfig
 ├── MINEConfig          hidden_dim, n_epochs, lr, ema_alpha, batch_pairs, ...
 ├── PrescreenConfig     enabled, method, threshold, max_pairs
+├── QCConfig            plot_pre_filter, plot_post_filter, mad_top_genes, line_quantiles
 ├── PermutationConfig   n_permutations, seed, p_value_threshold, mode
 ├── NetworkConfig       min_study_count, min_study_fraction, min_samples_per_study
 ├── MCODEConfig         score_threshold, min_size, min_density
@@ -257,6 +264,8 @@ PipelineConfig
 | `network_mine_{study}.graphml` | GraphML for Cytoscape/Gephi |
 | `null_distribution_{study}.txt` | Null MI statistics (QC) |
 | `edges_bh_fdr_{study}.tsv` | (Optional) BH-corrected edges |
+| `qc/qc_pre_filter.png` | (Optional) Pre-filter sample QC figure |
+| `qc/qc_post_filter.png` | (Optional) Post-filter sample QC figure |
 
 ### Master network:
 
@@ -325,10 +334,38 @@ The following enhancements were made after the first working version:
 
 # First tests:
 
-& "C:\Users\emari\OneDrive - Universitaet Bern (1)\Documents\Environments\scimilarity_2024_local\Scripts\python.exe" run_pipeline.py --output ./output --device cuda --perms 10000 --mode global --pval 0.001 --epochs 200 --batch-pairs 512 --prescreen-threshold 0.9 
+& "C:\Users\emari\OneDrive - Universitaet Bern (1)\Documents\Environments\scimilarity_2024_local\Scripts\python.exe" run_pipeline.py --output ./output --device cuda --perms 10000 --mode global --pval 0.001 --epochs 200 --batch-pairs 512 --prescreen-threshold 0.9  
+
+-2.7 hours run using GPU!
 #  first result
 38,342 edges across 5,014 genes — edge appears in ≥ 5 of 17 studies
 Extreme hub structure:
 ENSSSCG00000027172: miRNA degree 3,977 (connected to 79% of all nodes!)
 ENSSSCG00000036894: miRNA degree 3,791
 ENSSSCG00000045186: not-annotated degree 3,663
+
+##### next run expected: Key insight: the runtime scales with max-pairs, not with threshold. Whether 5M pairs come from |r|>0.3 or |r|>0.7 doesn't matter — MINE trains on the same number of batches either way. So:
+
+5M pairs → 9,766 batches × 17 studies → roughly 27 hours on your GPU
+2M pairs → ~3,906 batches × 17 studies → roughly 11 hours
+1M pairs → ~1,953 batches × 17 studies → roughly 5.5 hours
+
+### Second test:
+(scimilarity_2024_local) PS C:\Users\emari\OneDrive - Universitaet Bern\GCB\GRANTS\DSL 2026 MURREN\Course\MINE_NETWORK_PERMUTATION_FILTER_MCODE_ANNOTATED> & "C:\Users\emari\OneDrive - Universitaet Bern (1)\Documents\Environments\scimilarity_2024_local\Scripts\python.exe" run_pipeline.py --output ./output --device cuda --perms 10000 --mode global --pval 0.001 --epochs 200 --batch-pairs 512 --prescreen-threshold 0.3 --max-pair 50000000 --prescreen-method "spearman"
+
+## to sloow on my machine, deploy on the cluster.
+
+# Maybe helps to remove first ribosomal genes?
+
+### Test with number of genes kept by MAD
+##### 10k genes
+& "C:/Users/emari/OneDrive - Universitaet Bern (1)/Documents/Environments/scimilarity_2024_local/Scripts/python.exe" run_pipeline.py --output ./output_madtest/mad10000 --device cuda --perms 100 --mode global --pval 0.001 --epochs 40 --batch-pairs 512 --prescreen-threshold 0.3 --prescreen-method spearman --max-pairs 100000 --mad-top-genes 10000 --qc-preplot --qc-postplot
+
+##### 5k genes
+& "C:/Users/emari/OneDrive - Universitaet Bern (1)/Documents/Environments/scimilarity_2024_local/Scripts/python.exe" run_pipeline.py --output ./output_madtest/mad5000 --device cuda --perms 100 --mode global --pval 0.001 --epochs 40 --batch-pairs 512 --prescreen-threshold 0.3 --prescreen-method spearman --max-pairs 100000 --mad-top-genes 5000 --qc-preplot --qc-postplot
+
+##### 3k genes
+& "C:/Users/emari/OneDrive - Universitaet Bern (1)/Documents/Environments/scimilarity_2024_local/Scripts/python.exe" run_pipeline.py --output ./output_madtest/mad3000 --device cuda --perms 100 --mode global --pval 0.001 --epochs 40 --batch-pairs 512 --prescreen-threshold 0.3 --prescreen-method spearman --max-pairs 100000 --mad-top-genes 3000 --qc-preplot --qc-postplot
+
+## TODO
+A sensible next upgrade is to make module detection explicitly weight-aware and two-stage: add CLI/config options to build weighted study/master edges using either MI_MINE, n_studies, or significance-based weight (e.g., (w=-\log_{10}(p+\epsilon)), optionally normalized and clipped), then expose a --module-method switch (mcode or leiden) so users can choose dense-core detection vs global community detection on the same weighted master graph; after first-pass modules are found, add an optional refinement rule --submodule-size-threshold (e.g., 200 genes) that automatically reruns MCODE inside oversized modules to split them into interpretable submodules, and save both parent-child mappings plus weighted edge tables/GraphML attributes for traceability. This makes strong methodological sense for your data because current binary edges lose information, Leiden is more robust on large sparse weighted graphs, and recursive MCODE is a good way to recover dense biological cores inside broad communities.

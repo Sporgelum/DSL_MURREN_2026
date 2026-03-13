@@ -110,6 +110,20 @@ def main():
                              "(default: 5000000). Excess pairs are capped by "
                              "raising the |r| threshold dynamically.")
 
+    # QC and optional MAD filtering
+    parser.add_argument("--mad-top-genes", type=int, default=None,
+                        help="Keep only top-N genes by MAD before study splitting."
+                             " Example: 5000")
+    parser.add_argument("--qc-preplot", action="store_true",
+                        help="Save pre-filter QC figure (dendrogram + sample"
+                             " distribution lines + Spearman heatmap).")
+    parser.add_argument("--qc-postplot", action="store_true",
+                        help="Save post-filter QC figure using the filtered"
+                             " matrix (after MAD selection).")
+    parser.add_argument("--qc-quantiles", type=int, default=200,
+                        help="Number of quantile points in QC sample"
+                             " distribution line plots (default: 200).")
+
     # Permutation
     parser.add_argument("--perms", type=int, default=10000,
                         help="Number of permutations (default: 10000).")
@@ -170,6 +184,12 @@ def main():
     cfg.prescreen.threshold = args.prescreen_threshold
     cfg.prescreen.method = args.prescreen_method
     cfg.prescreen.max_pairs = args.max_pairs
+
+    # QC + MAD
+    cfg.qc.mad_top_genes = args.mad_top_genes
+    cfg.qc.plot_pre_filter = args.qc_preplot
+    cfg.qc.plot_post_filter = args.qc_postplot
+    cfg.qc.line_quantiles = args.qc_quantiles
 
     # Permutation
     cfg.permutation.n_permutations = args.perms

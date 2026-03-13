@@ -266,6 +266,33 @@ class AnnotationConfig:
     background_genes: str = None
 
 
+@dataclass
+class QCConfig:
+    """
+    Optional exploratory QC visualisation and MAD gene filtering.
+
+    These options are intended to inspect sample quality/heterogeneity before
+    network inference and to reduce pair-space by retaining only the most
+    variable genes across samples.
+
+    Attributes
+    ----------
+    plot_pre_filter : bool
+        Save a three-panel sample QC figure before MAD filtering.
+    plot_post_filter : bool
+        Save the same QC figure after MAD filtering.
+    mad_top_genes : int or None
+        If set, keep only the top-N genes ranked by MAD (median absolute
+        deviation) across all samples in the loaded matrix.
+    line_quantiles : int
+        Number of quantile points for the sample distribution line panel.
+    """
+    plot_pre_filter: bool = False
+    plot_post_filter: bool = False
+    mad_top_genes: int = None
+    line_quantiles: int = 200
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Master configuration
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -283,6 +310,7 @@ class PipelineConfig:
     network : NetworkConfig
     mcode : MCODEConfig
     annotation : AnnotationConfig
+    qc : QCConfig
     counts_path : str
         Path to the logCPM expression matrix (genes × samples, tab-separated).
     metadata_path : str
@@ -304,6 +332,7 @@ class PipelineConfig:
     network: NetworkConfig = field(default_factory=NetworkConfig)
     mcode: MCODEConfig = field(default_factory=MCODEConfig)
     annotation: AnnotationConfig = field(default_factory=AnnotationConfig)
+    qc: QCConfig = field(default_factory=QCConfig)
 
     # Paths — set at runtime or via CLI
     counts_path: str = ""

@@ -1,0 +1,7 @@
+Null MI distribution (MINE) — PRJNA484712
+============================================================
+N permutations : 100
+Mean           : 0.042864
+Std            : 0.045689
+99.9th pct     : 0.233655
+MI threshold   : 0.233655  (p < 0.001)

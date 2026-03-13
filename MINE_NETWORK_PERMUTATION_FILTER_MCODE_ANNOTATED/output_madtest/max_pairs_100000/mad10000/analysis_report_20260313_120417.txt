@@ -1,0 +1,211 @@
+================================================================================
+MINE-BASED GENE NETWORK INFERENCE — REPORT
+================================================================================
+
+Generated: 2026-03-13 12:13:11
+
+RESULTS
+--------------------------------------------------------------------------------
+  Genes before MAD filter                           : 32,763
+  Genes after MAD filter                            : 10,000
+  Studies                                           : 17
+  Expression matrix                                 : C:\Users\emari\OneDrive - Universitaet Bern\GCB\GRANTS\DSL 2026 MURREN\Course\Project_plan\counts_and_metadata\logCPM_matrix_filtered_samples.csv
+  PRJNA1107598: genes                               : 10000
+  PRJNA1107598: samples                             : 136
+  PRJNA1107598: candidate pairs                     : 100,000
+  PRJNA1107598: MI range                            : 0.0818 – 0.6509
+  PRJNA1107598: MI threshold (p<0.001)              : 0.0209
+  PRJNA1107598: significant edges                   : 100,000
+  PRJNA1163897: genes                               : 10000
+  PRJNA1163897: samples                             : 6
+  PRJNA1163897: candidate pairs                     : 100,000
+  PRJNA1163897: MI range                            : 0.0006 – 0.7455
+  PRJNA1163897: MI threshold (p<0.001)              : 0.2494
+  PRJNA1163897: significant edges                   : 53,835
+  PRJNA1200777: genes                               : 10000
+  PRJNA1200777: samples                             : 18
+  PRJNA1200777: candidate pairs                     : 100,000
+  PRJNA1200777: MI range                            : 0.0698 – 0.6638
+  PRJNA1200777: MI threshold (p<0.001)              : 0.1768
+  PRJNA1200777: significant edges                   : 96,716
+  PRJNA311061: genes                                : 10000
+  PRJNA311061: samples                              : 73
+  PRJNA311061: candidate pairs                      : 100,000
+  PRJNA311061: MI range                             : 0.0575 – 0.6511
+  PRJNA311061: MI threshold (p<0.001)               : 0.0555
+  PRJNA311061: significant edges                    : 99,999
+  PRJNA313448: genes                                : 10000
+  PRJNA313448: samples                              : 176
+  PRJNA313448: candidate pairs                      : 100,000
+  PRJNA313448: MI range                             : 0.0756 – 0.6654
+  PRJNA313448: MI threshold (p<0.001)               : 0.0189
+  PRJNA313448: significant edges                    : 100,000
+  PRJNA479928: genes                                : 10000
+  PRJNA479928: samples                              : 6
+  PRJNA479928: candidate pairs                      : 100,000
+  PRJNA479928: MI range                             : 0.0034 – 0.8016
+  PRJNA479928: MI threshold (p<0.001)               : 0.5110
+  PRJNA479928: significant edges                    : 1,425
+  PRJNA484712: genes                                : 10000
+  PRJNA484712: samples                              : 12
+  PRJNA484712: candidate pairs                      : 100,000
+  PRJNA484712: MI range                             : 0.0048 – 0.5909
+  PRJNA484712: MI threshold (p<0.001)               : 0.2332
+  PRJNA484712: significant edges                    : 63,061
+  PRJNA510331: genes                                : 10000
+  PRJNA510331: samples                              : 8
+  PRJNA510331: candidate pairs                      : 100,000
+  PRJNA510331: MI range                             : 0.0470 – 0.7112
+  PRJNA510331: MI threshold (p<0.001)               : 0.2511
+  PRJNA510331: significant edges                    : 63,175
+  PRJNA512863: genes                                : 10000
+  PRJNA512863: samples                              : 20
+  PRJNA512863: candidate pairs                      : 100,000
+  PRJNA512863: MI range                             : 0.0321 – 0.6673
+  PRJNA512863: MI threshold (p<0.001)               : 0.1431
+  PRJNA512863: significant edges                    : 98,912
+  PRJNA513475: genes                                : 10000
+  PRJNA513475: samples                              : 10
+  PRJNA513475: candidate pairs                      : 100,000
+  PRJNA513475: MI range                             : 0.0074 – 0.6140
+  PRJNA513475: MI threshold (p<0.001)               : 0.2050
+  PRJNA513475: significant edges                    : 80,173
+  PRJNA692626: genes                                : 10000
+  PRJNA692626: samples                              : 32
+  PRJNA692626: candidate pairs                      : 100,000
+  PRJNA692626: MI range                             : 0.0399 – 0.5902
+  PRJNA692626: MI threshold (p<0.001)               : 0.1207
+  PRJNA692626: significant edges                    : 98,994
+  PRJNA699465: genes                                : 10000
+  PRJNA699465: samples                              : 22
+  PRJNA699465: candidate pairs                      : 100,000
+  PRJNA699465: MI range                             : 0.0765 – 0.6885
+  PRJNA699465: MI threshold (p<0.001)               : 0.1105
+  PRJNA699465: significant edges                    : 99,947
+  PRJNA705952: genes                                : 10000
+  PRJNA705952: samples                              : 12
+  PRJNA705952: candidate pairs                      : 100,000
+  PRJNA705952: MI range                             : 0.0239 – 0.6751
+  PRJNA705952: MI threshold (p<0.001)               : 0.1258
+  PRJNA705952: significant edges                    : 99,268
+  PRJNA805111: genes                                : 10000
+  PRJNA805111: samples                              : 16
+  PRJNA805111: candidate pairs                      : 100,000
+  PRJNA805111: MI range                             : 0.0603 – 0.6856
+  PRJNA805111: MI threshold (p<0.001)               : 0.1615
+  PRJNA805111: significant edges                    : 97,445
+  PRJNA812000: genes                                : 10000
+  PRJNA812000: samples                              : 4
+  PRJNA812000: candidate pairs                      : 100,000
+  PRJNA812000: MI range                             : 0.0015 – 1.0923
+  PRJNA812000: MI threshold (p<0.001)               : 0.7080
+  PRJNA812000: significant edges                    : 185
+  PRJNA832220: genes                                : 10000
+  PRJNA832220: samples                              : 5
+  PRJNA832220: candidate pairs                      : 100,000
+  PRJNA832220: MI range                             : 0.0065 – 0.9520
+  PRJNA832220: MI threshold (p<0.001)               : 0.4365
+  PRJNA832220: significant edges                    : 5,668
+  PRJNA982050: genes                                : 10000
+  PRJNA982050: samples                              : 56
+  PRJNA982050: candidate pairs                      : 100,000
+  PRJNA982050: MI range                             : 0.0454 – 0.6184
+  PRJNA982050: MI threshold (p<0.001)               : 0.0595
+  PRJNA982050: significant edges                    : 99,993
+  Master: genes                                     : 10000
+  Master: edges                                     : 0
+  Master: MCODE modules                             : 0
+
+TIMING
+--------------------------------------------------------------------------------
+  Load expression + metadata                             :        52.86 seconds ( 10.0%)
+  PRJNA313448: MINE MI estimation (100,000 pairs)        :        50.93 seconds (  9.7%)
+  PRJNA1107598: MINE MI estimation (100,000 pairs)       :        41.46 seconds (  7.9%)
+  PRJNA311061: MINE MI estimation (100,000 pairs)        :        25.44 seconds (  4.8%)
+  PRJNA982050: MINE MI estimation (100,000 pairs)        :        24.46 seconds (  4.6%)
+  PRJNA705952: MINE MI estimation (100,000 pairs)        :        19.88 seconds (  3.8%)
+  PRJNA479928: MINE MI estimation (100,000 pairs)        :        19.41 seconds (  3.7%)
+  PRJNA812000: MINE MI estimation (100,000 pairs)        :        19.32 seconds (  3.7%)
+  PRJNA692626: MINE MI estimation (100,000 pairs)        :        19.08 seconds (  3.6%)
+  PRJNA699465: MINE MI estimation (100,000 pairs)        :        18.35 seconds (  3.5%)
+  PRJNA1163897: MINE MI estimation (100,000 pairs)       :        18.31 seconds (  3.5%)
+  PRJNA512863: MINE MI estimation (100,000 pairs)        :        18.10 seconds (  3.4%)
+  PRJNA1200777: MINE MI estimation (100,000 pairs)       :        17.89 seconds (  3.4%)
+  PRJNA484712: MINE MI estimation (100,000 pairs)        :        17.55 seconds (  3.3%)
+  PRJNA805111: MINE MI estimation (100,000 pairs)        :        17.55 seconds (  3.3%)
+  PRJNA513475: MINE MI estimation (100,000 pairs)        :        17.45 seconds (  3.3%)
+  PRJNA832220: MINE MI estimation (100,000 pairs)        :        17.40 seconds (  3.3%)
+  PRJNA510331: MINE MI estimation (100,000 pairs)        :        17.34 seconds (  3.3%)
+  Save master network                                    :         4.42 seconds (  0.8%)
+  PRJNA982050: saving                                    :         4.33 seconds (  0.8%)
+  PRJNA1107598: saving                                   :         3.65 seconds (  0.7%)
+  PRJNA313448: saving                                    :         3.61 seconds (  0.7%)
+  PRJNA311061: saving                                    :         3.57 seconds (  0.7%)
+  PRJNA699465: saving                                    :         3.55 seconds (  0.7%)
+  PRJNA692626: saving                                    :         3.54 seconds (  0.7%)
+  MCODE module detection                                 :         3.47 seconds (  0.7%)
+  PRJNA805111: saving                                    :         3.46 seconds (  0.7%)
+  PRJNA512863: saving                                    :         3.46 seconds (  0.7%)
+  PRJNA1200777: saving                                   :         3.45 seconds (  0.7%)
+  PRJNA705952: saving                                    :         3.44 seconds (  0.7%)
+  PRJNA484712: saving                                    :         3.42 seconds (  0.6%)
+  PRJNA513475: saving                                    :         3.41 seconds (  0.6%)
+  PRJNA510331: saving                                    :         3.36 seconds (  0.6%)
+  PRJNA1163897: saving                                   :         3.36 seconds (  0.6%)
+  PRJNA479928: saving                                    :         3.31 seconds (  0.6%)
+  PRJNA812000: saving                                    :         3.27 seconds (  0.6%)
+  PRJNA832220: saving                                    :         3.22 seconds (  0.6%)
+  Master network construction                            :         2.38 seconds (  0.5%)
+  PRJNA692626: Z-score + candidate selection             :         1.53 seconds (  0.3%)
+  PRJNA313448: Z-score + candidate selection             :         1.46 seconds (  0.3%)
+  PRJNA812000: Z-score + candidate selection             :         1.36 seconds (  0.3%)
+  PRJNA1107598: Z-score + candidate selection            :         1.34 seconds (  0.3%)
+  PRJNA311061: Z-score + candidate selection             :         1.29 seconds (  0.2%)
+  PRJNA510331: Z-score + candidate selection             :         1.24 seconds (  0.2%)
+  PRJNA1163897: Z-score + candidate selection            :         1.20 seconds (  0.2%)
+  PRJNA513475: Z-score + candidate selection             :         1.19 seconds (  0.2%)
+  PRJNA832220: Z-score + candidate selection             :         1.18 seconds (  0.2%)
+  PRJNA512863: Z-score + candidate selection             :         1.17 seconds (  0.2%)
+  PRJNA479928: Z-score + candidate selection             :         1.14 seconds (  0.2%)
+  PRJNA805111: Z-score + candidate selection             :         1.13 seconds (  0.2%)
+  PRJNA705952: Z-score + candidate selection             :         1.12 seconds (  0.2%)
+  PRJNA982050: Z-score + candidate selection             :         1.11 seconds (  0.2%)
+  PRJNA699465: Z-score + candidate selection             :         1.09 seconds (  0.2%)
+  PRJNA1200777: Z-score + candidate selection            :         1.07 seconds (  0.2%)
+  PRJNA484712: Z-score + candidate selection             :         1.03 seconds (  0.2%)
+  PRJNA982050: edge filtering                            :         0.16 seconds (  0.0%)
+  PRJNA311061: permutation null (global, 100 perms)      :         0.14 seconds (  0.0%)
+  PRJNA313448: edge filtering                            :         0.13 seconds (  0.0%)
+  PRJNA311061: edge filtering                            :         0.13 seconds (  0.0%)
+  PRJNA510331: edge filtering                            :         0.13 seconds (  0.0%)
+  PRJNA692626: edge filtering                            :         0.13 seconds (  0.0%)
+  PRJNA1200777: edge filtering                           :         0.13 seconds (  0.0%)
+  PRJNA705952: edge filtering                            :         0.13 seconds (  0.0%)
+  PRJNA699465: edge filtering                            :         0.13 seconds (  0.0%)
+  PRJNA812000: edge filtering                            :         0.13 seconds (  0.0%)
+  PRJNA513475: edge filtering                            :         0.13 seconds (  0.0%)
+  PRJNA805111: edge filtering                            :         0.13 seconds (  0.0%)
+  PRJNA1107598: edge filtering                           :         0.12 seconds (  0.0%)
+  PRJNA512863: edge filtering                            :         0.12 seconds (  0.0%)
+  PRJNA479928: edge filtering                            :         0.12 seconds (  0.0%)
+  PRJNA832220: edge filtering                            :         0.12 seconds (  0.0%)
+  PRJNA1163897: edge filtering                           :         0.12 seconds (  0.0%)
+  PRJNA484712: edge filtering                            :         0.12 seconds (  0.0%)
+  PRJNA982050: permutation null (global, 100 perms)      :         0.12 seconds (  0.0%)
+  PRJNA812000: permutation null (global, 100 perms)      :         0.12 seconds (  0.0%)
+  PRJNA699465: permutation null (global, 100 perms)      :         0.11 seconds (  0.0%)
+  PRJNA705952: permutation null (global, 100 perms)      :         0.11 seconds (  0.0%)
+  PRJNA513475: permutation null (global, 100 perms)      :         0.10 seconds (  0.0%)
+  PRJNA479928: permutation null (global, 100 perms)      :         0.10 seconds (  0.0%)
+  PRJNA805111: permutation null (global, 100 perms)      :         0.10 seconds (  0.0%)
+  PRJNA510331: permutation null (global, 100 perms)      :         0.10 seconds (  0.0%)
+  PRJNA1163897: permutation null (global, 100 perms)     :         0.09 seconds (  0.0%)
+  PRJNA484712: permutation null (global, 100 perms)      :         0.09 seconds (  0.0%)
+  PRJNA1200777: permutation null (global, 100 perms)     :         0.09 seconds (  0.0%)
+  PRJNA832220: permutation null (global, 100 perms)      :         0.09 seconds (  0.0%)
+  PRJNA512863: permutation null (global, 100 perms)      :         0.09 seconds (  0.0%)
+  PRJNA1107598: permutation null (global, 100 perms)     :         0.09 seconds (  0.0%)
+  PRJNA692626: permutation null (global, 100 perms)      :         0.09 seconds (  0.0%)
+  PRJNA313448: permutation null (global, 100 perms)      :         0.08 seconds (  0.0%)
+
+  TOTAL                                                  : 8.78 minutes (527.0s)

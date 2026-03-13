@@ -43,7 +43,10 @@ import torch
 from datetime import datetime
 
 from .config import PipelineConfig
-from .data_loader import load_expression, load_metadata, discover_studies, zscore_expression
+from .data_loader import (
+    load_expression, load_metadata, discover_studies, zscore_expression,
+    select_top_genes_by_mad,
+)
 from .mine_estimator import estimate_mi_for_pairs
 from .permutation import (
     build_global_null, build_per_pair_null,
@@ -58,6 +61,7 @@ from .io_utils import (
     save_null_qc, save_study_results, save_master_results, save_report,
     save_mine_diagnostics,
 )
+from .qc_plots import save_sample_qc_figure
 
 
 def _resolve_device(cfg: PipelineConfig) -> torch.device:
@@ -113,6 +117,40 @@ def run_pipeline(cfg: PipelineConfig) -> dict:
     with Timer("Load expression + metadata", timings):
         expr_full = load_expression(cfg.counts_path)
         metadata = load_metadata(cfg.metadata_path)
+
+        # Optional global QC plotting before MAD filtering
+        if cfg.qc.plot_pre_filter:
+            qc_dir = os.path.join(cfg.output_dir, "qc")
+            pre_qc_file = os.path.join(qc_dir, "qc_pre_filter.png")
+            save_sample_qc_figure(
+                expr_full,
+                pre_qc_file,
+                title=(f"Pre-filter QC ({expr_full.shape[0]:,} genes × "
+                       f"{expr_full.shape[1]:,} samples)"),
+                corr_threshold=None,
+                n_quantiles=cfg.qc.line_quantiles,
+            )
+
+        # Optional global MAD filtering
+        if cfg.qc.mad_top_genes is not None:
+            before_n = expr_full.shape[0]
+            expr_full = select_top_genes_by_mad(expr_full, cfg.qc.mad_top_genes)
+            info["Genes before MAD filter"] = f"{before_n:,}"
+            info["Genes after MAD filter"] = f"{expr_full.shape[0]:,}"
+
+        # Optional global QC plotting after MAD filtering
+        if cfg.qc.plot_post_filter:
+            qc_dir = os.path.join(cfg.output_dir, "qc")
+            post_qc_file = os.path.join(qc_dir, "qc_post_filter.png")
+            save_sample_qc_figure(
+                expr_full,
+                post_qc_file,
+                title=(f"Post-filter QC ({expr_full.shape[0]:,} genes × "
+                       f"{expr_full.shape[1]:,} samples)"),
+                corr_threshold=cfg.prescreen.threshold,
+                n_quantiles=cfg.qc.line_quantiles,
+            )
+
         studies = discover_studies(
             expr_full, metadata,
             min_samples=cfg.network.min_samples_per_study,
