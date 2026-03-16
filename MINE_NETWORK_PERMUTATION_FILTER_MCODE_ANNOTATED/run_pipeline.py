@@ -138,6 +138,28 @@ def main():
                         help="Min studies for master edge (default: 3).")
     parser.add_argument("--min-samples", type=int, default=3,
                         help="Min samples per study (default: 3).")
+    parser.add_argument("--module-method", type=str, default="mcode",
+                        choices=["mcode", "leiden"],
+                        help="First-pass module detector on master network.")
+    parser.add_argument("--master-edge-weight", type=str,
+                        default="n_studies",
+                        choices=["n_studies", "mean_mi", "mean_neglog10p"],
+                        help="Master edge weighting mode.")
+    parser.add_argument("--normalize-weights", action="store_true",
+                        help="Normalize study-level weights before aggregation.")
+    parser.add_argument("--weight-clip-min", type=float, default=None,
+                        help="Optional lower clip for study-level weights.")
+    parser.add_argument("--weight-clip-max", type=float, default=None,
+                        help="Optional upper clip for study-level weights.")
+    parser.add_argument("--weight-eps", type=float, default=1e-12,
+                        help="Epsilon for significance weight -log10(p + eps).")
+    parser.add_argument("--leiden-resolution", type=float, default=1.0,
+                        help="Leiden resolution parameter.")
+    parser.add_argument("--leiden-iterations", type=int, default=-1,
+                        help="Leiden iterations (-1 uses igraph default).")
+    parser.add_argument("--submodule-size-threshold", type=int, default=None,
+                        help="If set, rerun MCODE inside modules larger than"
+                             " this size.")
 
     # Annotation
     parser.add_argument("--gmt", type=str, nargs="*", default=[],
@@ -199,6 +221,17 @@ def main():
     # Network
     cfg.network.min_study_count = args.min_studies
     cfg.network.min_samples_per_study = args.min_samples
+
+    # Module detection + edge weighting
+    cfg.module.method = args.module_method
+    cfg.module.master_edge_weight = args.master_edge_weight
+    cfg.module.normalize_weights = args.normalize_weights
+    cfg.module.weight_clip_min = args.weight_clip_min
+    cfg.module.weight_clip_max = args.weight_clip_max
+    cfg.module.weight_eps = args.weight_eps
+    cfg.module.leiden_resolution = args.leiden_resolution
+    cfg.module.leiden_iterations = args.leiden_iterations
+    cfg.module.submodule_size_threshold = args.submodule_size_threshold
 
     # Annotation
     if args.gmt:

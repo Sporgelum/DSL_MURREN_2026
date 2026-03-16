@@ -313,9 +313,11 @@ def save_study_results(
 def save_master_results(
     master_adj: np.ndarray,
     edge_count: np.ndarray,
+    master_edge_weight: np.ndarray,
     gene_names: list,
     modules: dict,
     membership: dict,
+    parent_child_rows: list,
     min_count: int,
     n_studies: int,
     output_dir: str,
@@ -336,11 +338,15 @@ def save_master_results(
         Binary master adjacency.
     edge_count : np.ndarray
         Study count per edge.
+    master_edge_weight : np.ndarray
+        Weighted master edge matrix.
     gene_names : list[str]
     modules : dict
         MCODE modules.
     membership : dict
         Gene → module mapping.
+    parent_child_rows : list[dict]
+        Parent-child mapping for refined modules.
     min_count : int
         Minimum study count used.
     n_studies : int
@@ -348,16 +354,27 @@ def save_master_results(
     output_dir : str
     """
     print("\n[INFO] Saving master network...")
+    master_edge_weight = np.asarray(master_edge_weight, dtype=float)
     gene_arr = np.array(gene_names)
     rows, cols = np.where(np.triu(master_adj, k=1) == 1)
 
-    # Edge list with study count
-    pd.DataFrame({
+    # Edge list with study count + optional weight
+    edge_df = pd.DataFrame({
         "gene_A": gene_arr[rows],
         "gene_B": gene_arr[cols],
         "n_studies": edge_count[rows, cols],
-    }).sort_values("n_studies", ascending=False).to_csv(
+        "edge_weight": master_edge_weight[rows, cols],
+    })
+    edge_df.sort_values(["n_studies", "edge_weight"], ascending=False).to_csv(
         os.path.join(output_dir, "master_network_edgelist.tsv"),
+        sep="\t", index=False,
+    )
+
+    # Explicit weighted edge table for traceability
+    edge_df[["gene_A", "gene_B", "edge_weight"]].sort_values(
+        "edge_weight", ascending=False
+    ).to_csv(
+        os.path.join(output_dir, "master_network_weighted_edgelist.tsv"),
         sep="\t", index=False,
     )
 
@@ -366,15 +383,18 @@ def save_master_results(
             csr_matrix(master_adj))
     mmwrite(os.path.join(output_dir, "master_edge_study_counts.mtx"),
             csr_matrix(np.triu(edge_count)))
+    mmwrite(os.path.join(output_dir, "master_edge_weights.mtx"),
+            csr_matrix(np.triu(master_edge_weight)))
 
-    # GraphML with module annotation
-    adj_sym = np.maximum(master_adj, master_adj.T)
-    g = ig.Graph.Adjacency((adj_sym > 0).tolist(), mode="undirected")
+    # GraphML with module annotation + edge attributes
+    g = ig.Graph(n=len(gene_names), edges=list(zip(rows.tolist(), cols.tolist())), directed=False)
     g.vs["name"] = gene_names
     g.vs["module"] = [
         f"M{membership[gn]}" if gn in membership else "unassigned"
         for gn in gene_names
     ]
+    g.es["n_studies"] = edge_count[rows, cols].astype(int).tolist()
+    g.es["edge_weight"] = master_edge_weight[rows, cols].astype(float).tolist()
     g.write_graphml(os.path.join(output_dir, "master_network.graphml"))
 
     # Module membership tables
@@ -394,6 +414,12 @@ def save_master_results(
         sep="\t", index=False,
     )
 
+    if parent_child_rows:
+        pd.DataFrame(parent_child_rows).to_csv(
+            os.path.join(output_dir, "module_parent_child_mapping.tsv"),
+            sep="\t", index=False,
+        )
+
     # Per-module subgraphs
     gene_name_list = list(gene_names)
     saved = 0
@@ -412,7 +438,7 @@ def save_master_results(
         )
         saved += 1
 
-    print(f"[SAVED] Master: edgelist, adjacency, GraphML, "
+    print(f"[SAVED] Master: edgelist, weighted edges, adjacency, GraphML, "
           f"{len(modules)} modules, {saved} subgraphs")
 
 

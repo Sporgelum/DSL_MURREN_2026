@@ -198,6 +198,47 @@ class NetworkConfig:
 
 
 @dataclass
+class ModuleConfig:
+    """
+    Module detection and weighted-edge aggregation options.
+
+    Attributes
+    ----------
+    method : str
+        Module detector for first pass: ``"mcode"`` or ``"leiden"``.
+    master_edge_weight : str
+        Master edge weighting mode:
+        - ``"n_studies"``      : support count across studies
+        - ``"mean_mi"``        : mean MI among significant study edges
+        - ``"mean_neglog10p"`` : mean -log10(p + eps) among significant edges
+    normalize_weights : bool
+        If True, min-max normalize study-level weights before aggregation.
+    weight_clip_min : float or None
+        Optional lower clip for study-level weights before aggregation.
+    weight_clip_max : float or None
+        Optional upper clip for study-level weights before aggregation.
+    weight_eps : float
+        Numerical stabilizer for significance weights.
+    leiden_resolution : float
+        Leiden resolution parameter (higher => more/smaller communities).
+    leiden_iterations : int
+        Leiden iterations (-1 lets igraph choose default convergence behavior).
+    submodule_size_threshold : int or None
+        If set, modules larger than this are refined by running MCODE inside
+        the module and replacing it with detected submodules.
+    """
+    method: str = "mcode"
+    master_edge_weight: str = "n_studies"
+    normalize_weights: bool = False
+    weight_clip_min: float = None
+    weight_clip_max: float = None
+    weight_eps: float = 1e-12
+    leiden_resolution: float = 1.0
+    leiden_iterations: int = -1
+    submodule_size_threshold: int = None
+
+
+@dataclass
 class MCODEConfig:
     """
     MCODE dense-subgraph module detection (Bader & Hogue 2003).
@@ -309,6 +350,7 @@ class PipelineConfig:
     permutation : PermutationConfig
     network : NetworkConfig
     mcode : MCODEConfig
+    module : ModuleConfig
     annotation : AnnotationConfig
     qc : QCConfig
     counts_path : str
@@ -331,6 +373,7 @@ class PipelineConfig:
     permutation: PermutationConfig = field(default_factory=PermutationConfig)
     network: NetworkConfig = field(default_factory=NetworkConfig)
     mcode: MCODEConfig = field(default_factory=MCODEConfig)
+    module: ModuleConfig = field(default_factory=ModuleConfig)
     annotation: AnnotationConfig = field(default_factory=AnnotationConfig)
     qc: QCConfig = field(default_factory=QCConfig)
 

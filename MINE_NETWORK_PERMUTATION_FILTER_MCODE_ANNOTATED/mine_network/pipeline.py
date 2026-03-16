@@ -53,8 +53,11 @@ from .permutation import (
     compute_pvalues_global, compute_pvalues_per_pair,
 )
 from .prescreen import prescreen_pairs, all_pairs
-from .network import filter_edges, build_edgelist, apply_bh_fdr, build_master_network
-from .mcode import mcode
+from .network import (
+    filter_edges, build_edgelist, apply_bh_fdr,
+    build_master_network, aggregate_master_weights,
+)
+from .mcode import mcode, leiden_modules, refine_large_modules_with_mcode
 from .annotation import load_multiple_gmt, annotate_modules, save_annotations, download_enrichr_libraries
 from .io_utils import (
     TeeLogger, Timer, format_time,
@@ -111,6 +114,8 @@ def run_pipeline(cfg: PipelineConfig) -> dict:
     print(f"Null permutations: {cfg.permutation.n_permutations}")
     print(f"P-value threshold: {cfg.permutation.p_value_threshold}")
     print(f"Min studies      : {cfg.network.min_study_count}")
+    print(f"Module method    : {cfg.module.method}")
+    print(f"Master edge wt   : {cfg.module.master_edge_weight}")
     print("=" * 80)
 
     # ── Step 0: Load data ──
@@ -166,6 +171,7 @@ def run_pipeline(cfg: PipelineConfig) -> dict:
     # ── Step 1: Process each study ──
     study_results = []
     study_mi_values = {}  # for optional mean-MI edge weighting
+    study_weight_records = []
     common_gene_names = None
 
     for study in studies:
@@ -252,6 +258,7 @@ def run_pipeline(cfg: PipelineConfig) -> dict:
 
         # ── Filter edges ──
         with Timer(f"{study_name}: edge filtering", timings):
+            sig_mask = p_values < cfg.permutation.p_value_threshold
             adj_sig = filter_edges(
                 mi_values, p_values, pair_indices, n_genes,
                 p_threshold=cfg.permutation.p_value_threshold,
@@ -259,10 +266,43 @@ def run_pipeline(cfg: PipelineConfig) -> dict:
             n_edges = int(np.triu(adj_sig, k=1).sum())
             info[f"{study_name}: significant edges"] = f"{n_edges:,}"
 
+            # Collect study-level weights for weighted master-edge aggregation
+            sig_pairs = pair_indices[sig_mask]
+            if cfg.module.master_edge_weight == "mean_neglog10p":
+                w = -np.log10(p_values[sig_mask] + cfg.module.weight_eps)
+            else:
+                # mean_mi mode defaults to MI; n_studies mode ignores this record
+                w = mi_values[sig_mask]
+
+            if len(w) > 0:
+                if cfg.module.weight_clip_min is not None:
+                    w = np.maximum(w, cfg.module.weight_clip_min)
+                if cfg.module.weight_clip_max is not None:
+                    w = np.minimum(w, cfg.module.weight_clip_max)
+                if cfg.module.normalize_weights:
+                    w_min = w.min()
+                    w_max = w.max()
+                    if w_max > w_min:
+                        w = (w - w_min) / (w_max - w_min)
+
+            study_weight_records.append({
+                "name": study_name,
+                "pairs": sig_pairs,
+                "weights": w.astype(np.float32),
+            })
+
         # Edge list
         edgelist_df = build_edgelist(
             adj_sig, pair_indices, mi_values, p_values, gene_names,
         )
+        if len(edgelist_df) > 0:
+            if cfg.module.master_edge_weight == "mean_neglog10p":
+                ew = -np.log10(edgelist_df["p_value"].values + cfg.module.weight_eps)
+            elif cfg.module.master_edge_weight == "mean_mi":
+                ew = edgelist_df["MI_MINE"].values
+            else:
+                ew = np.ones(len(edgelist_df), dtype=np.float32)
+            edgelist_df["edge_weight"] = ew
 
         # Optional BH-FDR
         bh_df = None
@@ -330,19 +370,51 @@ def run_pipeline(cfg: PipelineConfig) -> dict:
         master_adj, edge_count = build_master_network(
             study_results, common_gene_names, min_count=effective_min,
         )
+        master_edge_weight = aggregate_master_weights(
+            n_genes=len(common_gene_names),
+            study_weight_records=study_weight_records,
+            master_adj=master_adj,
+            mode=cfg.module.master_edge_weight,
+            edge_count=edge_count,
+        )
         n_master = int(np.triu(master_adj, k=1).sum())
         info["Master: genes"] = str(len(common_gene_names))
         info["Master: edges"] = f"{n_master:,}"
+        if n_master > 0:
+            w_vals = master_edge_weight[np.triu(master_adj, k=1) == 1]
+            info["Master: edge weight range"] = (
+                f"{float(np.min(w_vals)):.4f} – {float(np.max(w_vals)):.4f}"
+            )
 
-    # ── Step 3: MCODE ──
-    with Timer("MCODE module detection", timings):
-        modules, membership = mcode(
-            master_adj, common_gene_names,
+    # ── Step 3: Module detection ──
+    with Timer("Module detection", timings):
+        if cfg.module.method == "leiden":
+            modules, membership = leiden_modules(
+                master_adj,
+                common_gene_names,
+                edge_weights=master_edge_weight,
+                resolution=cfg.module.leiden_resolution,
+                n_iterations=cfg.module.leiden_iterations,
+                min_size=cfg.mcode.min_size,
+            )
+        else:
+            modules, membership = mcode(
+                master_adj, common_gene_names,
+                score_threshold=cfg.mcode.score_threshold,
+                min_size=cfg.mcode.min_size,
+                min_density=cfg.mcode.min_density,
+            )
+
+        modules, membership, parent_child_rows = refine_large_modules_with_mcode(
+            modules,
+            master_adj,
+            common_gene_names,
+            size_threshold=cfg.module.submodule_size_threshold,
             score_threshold=cfg.mcode.score_threshold,
             min_size=cfg.mcode.min_size,
             min_density=cfg.mcode.min_density,
         )
-        info["Master: MCODE modules"] = str(len(modules))
+        info["Master: modules"] = str(len(modules))
 
     # ── Step 4: Annotation ──
     # Download GMT files from Enrichr if requested
@@ -381,8 +453,9 @@ def run_pipeline(cfg: PipelineConfig) -> dict:
     # ── Step 5: Save master ──
     with Timer("Save master network", timings):
         save_master_results(
-            master_adj, edge_count, common_gene_names,
-            modules, membership,
+            master_adj, edge_count, master_edge_weight,
+            common_gene_names,
+            modules, membership, parent_child_rows,
             min_count=effective_min, n_studies=n_studies,
             output_dir=cfg.output_dir,
         )

@@ -369,3 +369,8 @@ ENSSSCG00000045186: not-annotated degree 3,663
 
 ## TODO
 A sensible next upgrade is to make module detection explicitly weight-aware and two-stage: add CLI/config options to build weighted study/master edges using either MI_MINE, n_studies, or significance-based weight (e.g., (w=-\log_{10}(p+\epsilon)), optionally normalized and clipped), then expose a --module-method switch (mcode or leiden) so users can choose dense-core detection vs global community detection on the same weighted master graph; after first-pass modules are found, add an optional refinement rule --submodule-size-threshold (e.g., 200 genes) that automatically reruns MCODE inside oversized modules to split them into interpretable submodules, and save both parent-child mappings plus weighted edge tables/GraphML attributes for traceability. This makes strong methodological sense for your data because current binary edges lose information, Leiden is more robust on large sparse weighted graphs, and recursive MCODE is a good way to recover dense biological cores inside broad communities.
+
+
+# New test with leiden and mcode:
+Set-Location "c:\Users\emari\OneDrive - Universitaet Bern\GCB\GRANTS\DSL 2026 MURREN\Course\MINE_NETWORK_PERMUTATION_FILTER_MCODE_ANNOTATED"; & "C:/Users/emari/OneDrive - Universitaet Bern (1)/Documents/Environments/scimilarity_2024_local/Scripts/python.exe" run_pipeline.py --output "results\smoke_weighted_leiden" --perms 10 --epochs 5 --mad-top-genes 500 --max-pairs 2000 --module-method leiden --master-edge-weight mean_neglog10p --normalize-weights --submodule-size-threshold 50 --download-gmt
+## significant improvement, 9 modules! use resolution go deeper?
