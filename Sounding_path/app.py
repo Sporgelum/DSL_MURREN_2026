@@ -257,7 +257,7 @@ def build_map_layers(
                 get_line_color=[65, 65, 65],
                 pickable=True,
                 auto_highlight=True,
-                opacity=0.5,
+                opacity=0.16,
                 extruded=True,
                 stroked=True,
             )
@@ -278,7 +278,7 @@ def build_map_layers(
                 line_width_min_pixels=2,
                 pickable=True,
                 stroked=True,
-                opacity=0.86,
+                opacity=0.2,
             )
         )
 
@@ -298,9 +298,9 @@ def build_map_layers(
                     "PathLayer",
                     data=path_data,
                     get_path="path",
-                    get_width=140,
+                    get_width=28,
                     width_units="meters",
-                    get_color=[255, 215, 0],
+                    get_color=[57, 255, 20, 180],
                     pickable=True,
                 )
             )
@@ -317,14 +317,14 @@ def build_map_layers(
                     "ScatterplotLayer",
                     data=route_markers,
                     get_position="[lon, lat, bubble_alt_m]",
-                    get_radius=max(160, int(visual_radius_m * 0.45)),
+                    get_radius=max(90, int(visual_radius_m * 0.25)),
                     radius_units="meters",
                     get_fill_color="route_color",
                     get_line_color=[30, 30, 30],
-                    line_width_min_pixels=2,
+                    line_width_min_pixels=1,
                     pickable=True,
                     stroked=True,
-                    opacity=0.95,
+                    opacity=0.45,
                 )
             )
 
@@ -334,10 +334,10 @@ def build_map_layers(
                     data=route_markers,
                     get_position="[lon, lat, bubble_alt_m]",
                     get_text="route_label",
-                    get_size=14,
+                    get_size=10,
                     size_units="meters",
-                    size_scale=4,
-                    get_color=[0, 0, 0, 255],
+                    size_scale=3,
+                    get_color=[20, 20, 20, 150],
                     get_angle=0,
                     get_text_anchor="middle",
                     get_alignment_baseline="center",
