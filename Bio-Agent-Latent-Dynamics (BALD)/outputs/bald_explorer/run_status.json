@@ -1,0 +1,11 @@
+{
+  "state": "completed",
+  "progress": 1.0,
+  "message": "Artifacts built successfully.",
+  "updated_at": "2026-03-19T09:32:21.360345+00:00",
+  "artifacts": {
+    "latent_points": "C:\\Users\\emari\\OneDrive - Universitaet Bern\\GCB\\GRANTS\\DSL 2026 MURREN\\Course\\Bio-Agent-Latent-Dynamics (BALD)\\outputs\\bald_explorer\\latent_points.csv",
+    "trajectory_summary": "C:\\Users\\emari\\OneDrive - Universitaet Bern\\GCB\\GRANTS\\DSL 2026 MURREN\\Course\\Bio-Agent-Latent-Dynamics (BALD)\\outputs\\bald_explorer\\trajectory_summary.csv",
+    "top_genes_by_group": "C:\\Users\\emari\\OneDrive - Universitaet Bern\\GCB\\GRANTS\\DSL 2026 MURREN\\Course\\Bio-Agent-Latent-Dynamics (BALD)\\outputs\\bald_explorer\\top_genes_by_group.csv"
+  }
+}

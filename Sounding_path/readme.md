@@ -17,7 +17,7 @@ The app pulls forecast pressure-level data for many Bernese Oberland peaks and c
 - Bubble coloring by score intensity (orange scale)
 - Vertical dry-air cylinders from dry-layer top to bottom
 - Forecast movie playback (automatic day-by-day map animation)
-- Suggested high-score circuit line and estimated chain distance
+- Suggested high-score circuit line with visible PG waypoint markers and estimated chain distance
 - Peak-level sounding profile panel with red temperature and blue dewpoint lines
 
 ## Quick start (2 minutes)
@@ -71,8 +71,10 @@ Why this is useful:
 
 - Scores each peak using mid-layer dewpoint depression.
 - Ranks peaks by predicted "smooth thermal" potential.
-- Draws 300 m radius bubbles at peak elevation + 300 m.
+- Draws comparable bubbles and cylinders with shared radius controls.
 - Draws cylinders spanning dry-layer bottom to top (pressure-to-altitude approximation).
+- Uses a gray-to-red gradient where better conditions are red and weaker conditions are gray.
+- Allows coloring by different variables: score, mean gap, max gap, or consistency.
 - Can autoplay daily horizon maps as a forecast movie to track weather evolution.
 - Suggests a high-score peak chain to help route intuition.
 - Lets you inspect the sounding profile for any selected peak.

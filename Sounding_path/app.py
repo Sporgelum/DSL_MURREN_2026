@@ -16,7 +16,11 @@ import streamlit as st
 PRESSURE_LEVELS = [850, 700, 600, 500]
 TEMPERATURE_COLS = [f"temperature_{p}hPa" for p in PRESSURE_LEVELS]
 DEWPOINT_COLS = [f"dew_point_{p}hPa" for p in PRESSURE_LEVELS]
-BASEMAP_STYLE = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
+BASEMAP_STYLES = {
+    "Clean Light": "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+    "Topo Voyager": "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
+    "Dark Matter": "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+}
 
 
 @dataclass
@@ -38,14 +42,36 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * earth_radius_km * asin(sqrt(a))
 
 
-def score_to_orange_rgb(score: float) -> List[int]:
-    score_clamped = float(np.clip(score, 0.0, 100.0))
-    t = score_clamped / 100.0
-    # Light orange -> deep orange-red for stronger dry/stable signal.
-    r = int(255)
-    g = int(210 - 120 * t)
-    b = int(120 - 90 * t)
-    return [r, g, b]
+def lerp_color(c1: List[int], c2: List[int], t: float) -> List[int]:
+    t = float(np.clip(t, 0.0, 1.0))
+    return [
+        int(c1[0] + (c2[0] - c1[0]) * t),
+        int(c1[1] + (c2[1] - c1[1]) * t),
+        int(c1[2] + (c2[2] - c1[2]) * t),
+    ]
+
+
+def metric_value_to_unit(value: float, metric_mode: str) -> float:
+    if metric_mode == "Score":
+        return float(np.clip(value / 100.0, 0.0, 1.0))
+    if metric_mode == "Mean dry gap (T-Td)":
+        return float(np.clip(value / 25.0, 0.0, 1.0))
+    if metric_mode == "Max dry gap (T-Td)":
+        return float(np.clip(value / 30.0, 0.0, 1.0))
+    # For variability, lower is better, so invert.
+    return float(1.0 - np.clip(value / 8.0, 0.0, 1.0))
+
+
+def compute_visual_color(row: pd.Series, metric_mode: str) -> List[int]:
+    metric_key = {
+        "Score": "score",
+        "Mean dry gap (T-Td)": "mean_dep_c",
+        "Max dry gap (T-Td)": "max_dep_c",
+        "Consistency (low std)": "std_dep_c",
+    }[metric_mode]
+    unit = metric_value_to_unit(float(row[metric_key]), metric_mode)
+    # Low = gray, high = red.
+    return lerp_color([145, 145, 145], [218, 38, 38], unit)
 
 
 def pressure_to_altitude_m(pressure_hpa: float) -> float:
@@ -171,7 +197,6 @@ def build_peak_hour_table(peaks: pd.DataFrame, target_time: pd.Timestamp, foreca
                 "dry_bottom_alt_m": dry_bottom_alt,
                 "cylinder_base_m": dry_bottom_alt,
                 "cylinder_height_m": cylinder_height,
-                "color": score_to_orange_rgb(score_parts.score),
             }
         )
 
@@ -209,25 +234,30 @@ def build_map_layers(
     show_bubbles: bool,
     show_cylinders: bool,
     show_circuit: bool,
+    color_metric_mode: str,
+    visual_radius_m: int,
     min_score_for_circuit: float,
     max_circuit_points: int,
 ) -> Tuple[List[pdk.Layer], float]:
     layers: List[pdk.Layer] = []
+    vis_df = peak_scores.copy()
+    vis_df["color"] = vis_df.apply(lambda row: compute_visual_color(row, color_metric_mode), axis=1)
+    vis_df["radius_m"] = float(visual_radius_m)
 
     if show_cylinders:
         layers.append(
             pdk.Layer(
                 "ColumnLayer",
-                data=peak_scores,
+                data=vis_df,
                 get_position="[lon, lat, cylinder_base_m]",
                 get_elevation="cylinder_height_m",
                 elevation_scale=1,
-                radius=220,
+                radius=int(visual_radius_m * 0.75),
                 get_fill_color="color",
-                get_line_color=[80, 50, 20],
+                get_line_color=[65, 65, 65],
                 pickable=True,
                 auto_highlight=True,
-                opacity=0.42,
+                opacity=0.5,
                 extruded=True,
                 stroked=True,
             )
@@ -237,24 +267,24 @@ def build_map_layers(
         layers.append(
             pdk.Layer(
                 "ScatterplotLayer",
-                data=peak_scores,
+                data=vis_df,
                 get_position="[lon, lat, bubble_alt_m]",
                 get_radius="radius_m",
                 radius_units="meters",
-                radius_min_pixels=4,
-                radius_max_pixels=40,
+                radius_min_pixels=5,
+                radius_max_pixels=45,
                 get_fill_color="color",
-                get_line_color=[60, 40, 20],
-                line_width_min_pixels=1,
+                get_line_color=[70, 70, 70],
+                line_width_min_pixels=2,
                 pickable=True,
                 stroked=True,
-                opacity=0.8,
+                opacity=0.86,
             )
         )
 
     route_distance = 0.0
     if show_circuit:
-        route, route_distance = build_suggested_circuit(peak_scores, min_score_for_circuit, max_circuit_points)
+        route, route_distance = build_suggested_circuit(vis_df, min_score_for_circuit, max_circuit_points)
         if not route.empty:
             path_data = [
                 {
@@ -268,9 +298,49 @@ def build_map_layers(
                     "PathLayer",
                     data=path_data,
                     get_path="path",
-                    get_width=90,
+                    get_width=140,
                     width_units="meters",
-                    get_color=[255, 140, 0],
+                    get_color=[255, 215, 0],
+                    pickable=True,
+                )
+            )
+
+            route_markers = route.copy().reset_index(drop=True)
+            route_markers["route_idx"] = route_markers.index + 1
+            route_markers["route_label"] = route_markers["route_idx"].apply(lambda x: f"PG-{x}")
+            route_markers["route_color"] = route_markers["route_idx"].apply(
+                lambda i: [20, 170, 80] if i == 1 else [255, 215, 0]
+            )
+
+            layers.append(
+                pdk.Layer(
+                    "ScatterplotLayer",
+                    data=route_markers,
+                    get_position="[lon, lat, bubble_alt_m]",
+                    get_radius=max(160, int(visual_radius_m * 0.45)),
+                    radius_units="meters",
+                    get_fill_color="route_color",
+                    get_line_color=[30, 30, 30],
+                    line_width_min_pixels=2,
+                    pickable=True,
+                    stroked=True,
+                    opacity=0.95,
+                )
+            )
+
+            layers.append(
+                pdk.Layer(
+                    "TextLayer",
+                    data=route_markers,
+                    get_position="[lon, lat, bubble_alt_m]",
+                    get_text="route_label",
+                    get_size=14,
+                    size_units="meters",
+                    size_scale=4,
+                    get_color=[0, 0, 0, 255],
+                    get_angle=0,
+                    get_text_anchor="middle",
+                    get_alignment_baseline="center",
                     pickable=True,
                 )
             )
@@ -284,6 +354,9 @@ def render_map_block(
     show_bubbles: bool,
     show_cylinders: bool,
     show_circuit: bool,
+    color_metric_mode: str,
+    visual_radius_m: int,
+    basemap_style: str,
     min_score_for_circuit: float,
     max_circuit_points: int,
     key_suffix: str,
@@ -293,6 +366,8 @@ def render_map_block(
         show_bubbles=show_bubbles,
         show_cylinders=show_cylinders,
         show_circuit=show_circuit,
+        color_metric_mode=color_metric_mode,
+        visual_radius_m=visual_radius_m,
         min_score_for_circuit=min_score_for_circuit,
         max_circuit_points=max_circuit_points,
     )
@@ -303,6 +378,8 @@ def render_map_block(
             "Area: {area}<br/>"
             "Score: {score}<br/>"
             "Mean T-Td: {mean_dep_c} C<br/>"
+            "Max T-Td: {max_dep_c} C<br/>"
+            "Std T-Td: {std_dep_c} C<br/>"
             "Dry span: {dry_bottom_hpa} to {dry_top_hpa} hPa<br/>"
             "Driest layer: {driest_layer_hpa} hPa"
         ),
@@ -320,7 +397,7 @@ def render_map_block(
     st.subheader(title)
     st.pydeck_chart(
         pdk.Deck(
-            map_style=BASEMAP_STYLE,
+            map_style=basemap_style,
             initial_view_state=view_state,
             layers=layers,
             tooltip=tooltip,
@@ -336,6 +413,9 @@ def build_deck(
     show_bubbles: bool,
     show_cylinders: bool,
     show_circuit: bool,
+    color_metric_mode: str,
+    visual_radius_m: int,
+    basemap_style: str,
     min_score_for_circuit: float,
     max_circuit_points: int,
 ) -> Tuple[pdk.Deck, float]:
@@ -344,6 +424,8 @@ def build_deck(
         show_bubbles=show_bubbles,
         show_cylinders=show_cylinders,
         show_circuit=show_circuit,
+        color_metric_mode=color_metric_mode,
+        visual_radius_m=visual_radius_m,
         min_score_for_circuit=min_score_for_circuit,
         max_circuit_points=max_circuit_points,
     )
@@ -354,6 +436,8 @@ def build_deck(
             "Area: {area}<br/>"
             "Score: {score}<br/>"
             "Mean T-Td: {mean_dep_c} C<br/>"
+            "Max T-Td: {max_dep_c} C<br/>"
+            "Std T-Td: {std_dep_c} C<br/>"
             "Dry span: {dry_bottom_hpa} to {dry_top_hpa} hPa<br/>"
             "Driest layer: {driest_layer_hpa} hPa"
         ),
@@ -369,7 +453,7 @@ def build_deck(
     )
 
     deck = pdk.Deck(
-        map_style=BASEMAP_STYLE,
+        map_style=basemap_style,
         initial_view_state=view_state,
         layers=layers,
         tooltip=tooltip,
@@ -380,7 +464,9 @@ def build_deck(
 def build_suggested_circuit(df: pd.DataFrame, min_score: float, max_points: int) -> Tuple[pd.DataFrame, float]:
     pool = df[df["score"] >= min_score].copy()
     if len(pool) < 2:
-        return pd.DataFrame(), 0.0
+        pool = df.sort_values("score", ascending=False).head(max(4, min(max_points, len(df)))).copy()
+        if len(pool) < 2:
+            return pd.DataFrame(), 0.0
 
     pool = pool.sort_values("score", ascending=False).head(max_points).reset_index(drop=True)
     visited = [pool.loc[0, "name"]]
@@ -483,6 +569,13 @@ def main() -> None:
     with st.sidebar:
         st.header("Settings")
         forecast_days = st.slider("Forecast horizon (days)", min_value=1, max_value=7, value=2)
+        basemap_name = st.selectbox("Basemap", options=list(BASEMAP_STYLES.keys()), index=0)
+        color_metric_mode = st.selectbox(
+            "Color by",
+            options=["Score", "Mean dry gap (T-Td)", "Max dry gap (T-Td)", "Consistency (low std)"],
+            index=0,
+        )
+        visual_radius_m = st.slider("Bubble/cylinder radius (m)", min_value=140, max_value=500, value=260, step=20)
         view_mode = st.radio("Forecast view mode", options=["Single hour", "Daily horizon"], index=0)
         daily_target_hour = st.slider("Daily horizon reference hour", min_value=6, max_value=20, value=13)
         horizon_layout = st.radio("Daily horizon layout", options=["Tabs", "Stacked maps"], index=0)
@@ -493,8 +586,10 @@ def main() -> None:
         show_bubbles = st.toggle("Show bubble markers", value=True)
         show_cylinders = st.toggle("Show dry-air cylinders", value=True)
         show_circuit = st.toggle("Show suggested circuit", value=True)
-        min_score_for_circuit = st.slider("Circuit score threshold", min_value=30, max_value=95, value=60)
+        min_score_for_circuit = st.slider("Circuit score threshold", min_value=30, max_value=95, value=45)
         max_circuit_points = st.slider("Max peaks in circuit", min_value=4, max_value=18, value=10)
+
+    basemap_style = BASEMAP_STYLES[basemap_name]
 
     with st.expander("Quick start: what this app contains and how to use it", expanded=False):
         st.markdown(
@@ -572,10 +667,13 @@ def main() -> None:
 
         route_distance = render_map_block(
             peak_scores=peak_scores,
-            title="Interactive bubble/cylinder map (real Switzerland basemap)",
+            title="Interactive map (clear route + comparable bubbles/cylinders)",
             show_bubbles=show_bubbles,
             show_cylinders=show_cylinders,
             show_circuit=show_circuit,
+            color_metric_mode=color_metric_mode,
+            visual_radius_m=visual_radius_m,
+            basemap_style=basemap_style,
             min_score_for_circuit=min_score_for_circuit,
             max_circuit_points=max_circuit_points,
             key_suffix="single_hour",
@@ -640,6 +738,9 @@ def main() -> None:
                             show_bubbles=show_bubbles,
                             show_cylinders=show_cylinders,
                             show_circuit=show_circuit,
+                            color_metric_mode=color_metric_mode,
+                            visual_radius_m=visual_radius_m,
+                            basemap_style=basemap_style,
                             min_score_for_circuit=min_score_for_circuit,
                             max_circuit_points=max_circuit_points,
                         )
@@ -676,6 +777,9 @@ def main() -> None:
                         show_bubbles=show_bubbles,
                         show_cylinders=show_cylinders,
                         show_circuit=show_circuit,
+                        color_metric_mode=color_metric_mode,
+                        visual_radius_m=visual_radius_m,
+                        basemap_style=basemap_style,
                         min_score_for_circuit=min_score_for_circuit,
                         max_circuit_points=max_circuit_points,
                         key_suffix=f"tab_{day_key}",
@@ -689,6 +793,9 @@ def main() -> None:
                     show_bubbles=show_bubbles,
                     show_cylinders=show_cylinders,
                     show_circuit=show_circuit,
+                    color_metric_mode=color_metric_mode,
+                    visual_radius_m=visual_radius_m,
+                    basemap_style=basemap_style,
                     min_score_for_circuit=min_score_for_circuit,
                     max_circuit_points=max_circuit_points,
                     key_suffix=f"stack_{day_key}",

@@ -1,0 +1,16 @@
+{
+  "id": "b1d761c6c8974e5fb0f86be600918663",
+  "kind": "build_artifacts",
+  "status": "completed",
+  "created_at": "2026-03-19T08:49:38.624884+00:00",
+  "started_at": "2026-03-19T08:49:38.626881+00:00",
+  "finished_at": "2026-03-19T08:49:43.784230+00:00",
+  "progress": 1.0,
+  "message": "Build complete",
+  "artifacts": {
+    "latent_points": "outputs\\bald_explorer\\latent_points.csv",
+    "trajectory_summary": "outputs\\bald_explorer\\trajectory_summary.csv",
+    "top_genes_by_group": "outputs\\bald_explorer\\top_genes_by_group.csv"
+  },
+  "error": null
+}

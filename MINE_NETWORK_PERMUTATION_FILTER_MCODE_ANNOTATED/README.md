@@ -367,7 +367,7 @@ ENSSSCG00000045186: not-annotated degree 3,663
 ##### 3k genes
 & "C:/Users/emari/OneDrive - Universitaet Bern (1)/Documents/Environments/scimilarity_2024_local/Scripts/python.exe" run_pipeline.py --output ./output_madtest/mad3000 --device cuda --perms 100 --mode global --pval 0.001 --epochs 40 --batch-pairs 512 --prescreen-threshold 0.3 --prescreen-method spearman --max-pairs 100000 --mad-top-genes 3000 --qc-preplot --qc-postplot
 
-## TODO
+## IMPLEMENTED
 A sensible next upgrade is to make module detection explicitly weight-aware and two-stage: add CLI/config options to build weighted study/master edges using either MI_MINE, n_studies, or significance-based weight (e.g., (w=-\log_{10}(p+\epsilon)), optionally normalized and clipped), then expose a --module-method switch (mcode or leiden) so users can choose dense-core detection vs global community detection on the same weighted master graph; after first-pass modules are found, add an optional refinement rule --submodule-size-threshold (e.g., 200 genes) that automatically reruns MCODE inside oversized modules to split them into interpretable submodules, and save both parent-child mappings plus weighted edge tables/GraphML attributes for traceability. This makes strong methodological sense for your data because current binary edges lose information, Leiden is more robust on large sparse weighted graphs, and recursive MCODE is a good way to recover dense biological cores inside broad communities.
 
 
