@@ -1,0 +1,9 @@
+services:
+  thermal-bubble-map:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: thermal-bubble-map
+    ports:
+      - "8501:8501"
+    restart: unless-stopped

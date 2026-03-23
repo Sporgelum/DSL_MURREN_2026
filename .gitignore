@@ -7,6 +7,8 @@ __pycache__/
 *.egg
 build/
 dist/
+.venv/
+venv/
 
 # ── Jupyter checkpoints ─────────────────────────
 .ipynb_checkpoints/
@@ -98,3 +100,6 @@ output/
 results/
 logs/
 checkpoints/
+
+# ── Local app environments ──────────────────────
+Sounding_path/.venv/
