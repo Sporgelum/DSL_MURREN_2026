@@ -115,6 +115,24 @@ Why this is useful:
 
 1. Open the local URL printed by Streamlit (usually `http://localhost:8501`).
 
+## Save every step to git
+
+If you want to always add all files at each step, use these helper scripts:
+
+1. Commit all changes (tracked and untracked):
+
+```powershell
+.\scripts\git_save_step.ps1 -Message "step: improved route colors"
+```
+
+1. Commit all changes and push immediately:
+
+```powershell
+.\scripts\git_save_and_push.ps1 -Message "step: map tuning" -Branch "main"
+```
+
+These scripts run `git add -A` on every call.
+
 ## Reproducibility model
 
 - App dependencies are version-pinned in `requirements.lock.txt`.
