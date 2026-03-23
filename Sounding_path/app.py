@@ -236,6 +236,11 @@ def build_map_layers(
     show_circuit: bool,
     color_metric_mode: str,
     visual_radius_m: int,
+    bubble_opacity: float,
+    cylinder_opacity: float,
+    route_opacity: float,
+    route_width_m: int,
+    cylinder_height_scale: float,
     min_score_for_circuit: float,
     max_circuit_points: int,
 ) -> Tuple[List[pdk.Layer], float]:
@@ -251,13 +256,13 @@ def build_map_layers(
                 data=vis_df,
                 get_position="[lon, lat, cylinder_base_m]",
                 get_elevation="cylinder_height_m",
-                elevation_scale=1,
+                elevation_scale=cylinder_height_scale,
                 radius=int(visual_radius_m * 0.75),
                 get_fill_color="color",
                 get_line_color=[65, 65, 65],
                 pickable=True,
                 auto_highlight=True,
-                opacity=0.16,
+                opacity=float(np.clip(cylinder_opacity, 0.05, 0.9)),
                 extruded=True,
                 stroked=True,
             )
@@ -278,7 +283,7 @@ def build_map_layers(
                 line_width_min_pixels=2,
                 pickable=True,
                 stroked=True,
-                opacity=0.2,
+                opacity=float(np.clip(bubble_opacity, 0.05, 0.95)),
             )
         )
 
@@ -298,9 +303,9 @@ def build_map_layers(
                     "PathLayer",
                     data=path_data,
                     get_path="path",
-                    get_width=28,
+                    get_width=int(route_width_m),
                     width_units="meters",
-                    get_color=[57, 255, 20, 180],
+                    get_color=[57, 255, 20, int(255 * float(np.clip(route_opacity, 0.08, 1.0)))],
                     pickable=True,
                 )
             )
@@ -324,7 +329,7 @@ def build_map_layers(
                     line_width_min_pixels=1,
                     pickable=True,
                     stroked=True,
-                    opacity=0.45,
+                    opacity=max(0.22, float(route_opacity) * 0.55),
                 )
             )
 
@@ -356,6 +361,13 @@ def render_map_block(
     show_circuit: bool,
     color_metric_mode: str,
     visual_radius_m: int,
+    bubble_opacity: float,
+    cylinder_opacity: float,
+    route_opacity: float,
+    route_width_m: int,
+    cylinder_height_scale: float,
+    map_zoom: float,
+    map_pitch: int,
     basemap_style: str,
     min_score_for_circuit: float,
     max_circuit_points: int,
@@ -368,6 +380,11 @@ def render_map_block(
         show_circuit=show_circuit,
         color_metric_mode=color_metric_mode,
         visual_radius_m=visual_radius_m,
+        bubble_opacity=bubble_opacity,
+        cylinder_opacity=cylinder_opacity,
+        route_opacity=route_opacity,
+        route_width_m=route_width_m,
+        cylinder_height_scale=cylinder_height_scale,
         min_score_for_circuit=min_score_for_circuit,
         max_circuit_points=max_circuit_points,
     )
@@ -389,8 +406,8 @@ def render_map_block(
     view_state = pdk.ViewState(
         latitude=float(peak_scores["lat"].mean()),
         longitude=float(peak_scores["lon"].mean()),
-        zoom=8.4,
-        pitch=50,
+        zoom=map_zoom,
+        pitch=map_pitch,
         bearing=20,
     )
 
@@ -405,6 +422,10 @@ def render_map_block(
         width="stretch",
         key=f"deck_{key_suffix}",
     )
+    st.caption(
+        f"Color mode: {color_metric_mode}. Gray = weaker, Red = better. "
+        f"Top score here: {peak_scores['score'].max():.1f}, mean score: {peak_scores['score'].mean():.1f}."
+    )
     return route_distance
 
 
@@ -415,6 +436,13 @@ def build_deck(
     show_circuit: bool,
     color_metric_mode: str,
     visual_radius_m: int,
+    bubble_opacity: float,
+    cylinder_opacity: float,
+    route_opacity: float,
+    route_width_m: int,
+    cylinder_height_scale: float,
+    map_zoom: float,
+    map_pitch: int,
     basemap_style: str,
     min_score_for_circuit: float,
     max_circuit_points: int,
@@ -426,6 +454,11 @@ def build_deck(
         show_circuit=show_circuit,
         color_metric_mode=color_metric_mode,
         visual_radius_m=visual_radius_m,
+        bubble_opacity=bubble_opacity,
+        cylinder_opacity=cylinder_opacity,
+        route_opacity=route_opacity,
+        route_width_m=route_width_m,
+        cylinder_height_scale=cylinder_height_scale,
         min_score_for_circuit=min_score_for_circuit,
         max_circuit_points=max_circuit_points,
     )
@@ -447,8 +480,8 @@ def build_deck(
     view_state = pdk.ViewState(
         latitude=float(peak_scores["lat"].mean()),
         longitude=float(peak_scores["lon"].mean()),
-        zoom=8.4,
-        pitch=50,
+        zoom=map_zoom,
+        pitch=map_pitch,
         bearing=20,
     )
 
@@ -576,6 +609,13 @@ def main() -> None:
             index=0,
         )
         visual_radius_m = st.slider("Bubble/cylinder radius (m)", min_value=140, max_value=500, value=260, step=20)
+        bubble_opacity = st.slider("Bubble opacity", min_value=0.05, max_value=0.7, value=0.2, step=0.01)
+        cylinder_opacity = st.slider("Cylinder opacity", min_value=0.05, max_value=0.6, value=0.16, step=0.01)
+        route_opacity = st.slider("Circuit opacity", min_value=0.08, max_value=1.0, value=0.7, step=0.02)
+        route_width_m = st.slider("Circuit line width (m)", min_value=12, max_value=120, value=28, step=4)
+        cylinder_height_scale = st.slider("Cylinder height scale", min_value=0.5, max_value=2.2, value=1.0, step=0.1)
+        map_zoom = st.slider("Map zoom", min_value=7.0, max_value=10.5, value=8.4, step=0.1)
+        map_pitch = st.slider("Map pitch", min_value=0, max_value=70, value=50, step=1)
         view_mode = st.radio("Forecast view mode", options=["Single hour", "Daily horizon"], index=0)
         daily_target_hour = st.slider("Daily horizon reference hour", min_value=6, max_value=20, value=13)
         horizon_layout = st.radio("Daily horizon layout", options=["Tabs", "Stacked maps"], index=0)
@@ -602,175 +642,240 @@ def main() -> None:
             """
         )
 
-    peaks = load_peaks("data/bernese_oberland_peaks.csv")
-    areas = ["All"] + sorted(peaks["area"].unique().tolist())
-    selected_area = st.selectbox("Area filter", options=areas, index=0)
-    if selected_area != "All":
-        peaks = peaks[peaks["area"] == selected_area].reset_index(drop=True)
+    map_tab, explain_tab = st.tabs(["Map", "Explanation"])
+    with explain_tab:
+        st.subheader("Option guide")
+        st.markdown(
+            """
+            Use this tab to understand every selectable control.
 
-    if peaks.empty:
-        st.error("No peaks available after area filtering.")
-        return
-
-    default_time, all_times = choose_timeslot(peaks, forecast_days)
-    if view_mode == "Single hour":
-        selected_time = st.selectbox(
-            "Forecast hour",
-            options=all_times,
-            index=all_times.index(default_time),
-            format_func=lambda t: t.strftime("%Y-%m-%d %H:%M"),
+            - `Basemap`: map style (light/topo/dark).
+            - `Color by`: chooses which variable drives gray->red color.
+            - `Bubble/cylinder radius (m)`: sets comparable footprint size.
+            - `Bubble opacity` and `Cylinder opacity`: transparency controls.
+            - `Circuit opacity` and `Circuit line width (m)`: visual intensity of the suggested route.
+            - `Cylinder height scale`: stretches/compresses dry-layer columns for readability.
+            - `Map zoom` and `Map pitch`: camera framing and 3D perspective.
+            - `Forecast horizon (days)`: amount of forecast period to request.
+            - `Forecast view mode`: single hour vs daily horizon comparison.
+            - `Daily horizon reference hour`: fixed local hour used for day-to-day comparison.
+            - `Daily horizon layout`: tabs or stacked maps.
+            - `Enable forecast movie`: autoplay day sequence.
+            - `Minimum score to display`: filter weak peaks from map/table.
+            - `Show bubble markers`, `Show dry-air cylinders`, `Show suggested circuit`: layer toggles.
+            - `Circuit score threshold` and `Max peaks in circuit`: route construction controls.
+            - `Area filter`: restricts analysis to one mountain zone.
+            """
         )
 
-        with st.spinner("Computing scores for Bernese Oberland peaks..."):
-            peak_scores = build_peak_hour_table(peaks, selected_time, forecast_days)
+    with map_tab:
 
-        failed_peaks = peak_scores.attrs.get("failed_peaks", [])
-        if failed_peaks:
-            st.warning(
-                f"Forecast unavailable for {len(failed_peaks)} peak(s) at this time. "
-                "They were skipped in scoring."
+        peaks = load_peaks("data/bernese_oberland_peaks.csv")
+        areas = ["All"] + sorted(peaks["area"].unique().tolist())
+        selected_area = st.selectbox("Area filter", options=areas, index=0)
+        if selected_area != "All":
+            peaks = peaks[peaks["area"] == selected_area].reset_index(drop=True)
+
+        if peaks.empty:
+            st.error("No peaks available after area filtering.")
+            return
+
+        default_time, all_times = choose_timeslot(peaks, forecast_days)
+        if view_mode == "Single hour":
+            selected_time = st.selectbox(
+                "Forecast hour",
+                options=all_times,
+                index=all_times.index(default_time),
+                format_func=lambda t: t.strftime("%Y-%m-%d %H:%M"),
             )
 
-        if peak_scores.empty:
-            st.error("No forecast data returned for the selected time.")
-            return
+            with st.spinner("Computing scores for Bernese Oberland peaks..."):
+                peak_scores = build_peak_hour_table(peaks, selected_time, forecast_days)
 
-        peak_scores = peak_scores[peak_scores["score"] >= min_score_visible].reset_index(drop=True)
-        if peak_scores.empty:
-            st.warning("No peaks pass the minimum score filter. Lower the threshold.")
-            return
+            failed_peaks = peak_scores.attrs.get("failed_peaks", [])
+            if failed_peaks:
+                st.warning(
+                    f"Forecast unavailable for {len(failed_peaks)} peak(s) at this time. "
+                    "They were skipped in scoring."
+                )
 
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Peaks shown", f"{len(peak_scores)}")
-        col2.metric("Top score", f"{peak_scores['score'].max():.1f}")
-        col3.metric("Mean score", f"{peak_scores['score'].mean():.1f}")
+            if peak_scores.empty:
+                st.error("No forecast data returned for the selected time.")
+                return
 
-        st.subheader("Top peaks by smooth thermal potential")
-        st.dataframe(
-            peak_scores[["name", "area", "score", "mean_dep_c", "max_dep_c", "driest_layer_hpa", "dry_top_hpa", "dry_bottom_hpa", "elev_m"]]
-            .rename(
-                columns={
-                    "name": "Peak",
-                    "area": "Area",
-                    "score": "Score",
-                    "mean_dep_c": "Mean T-Td (C)",
-                    "max_dep_c": "Max T-Td (C)",
-                    "driest_layer_hpa": "Driest layer (hPa)",
-                    "dry_top_hpa": "Dry top (hPa)",
-                    "dry_bottom_hpa": "Dry bottom (hPa)",
-                    "elev_m": "Peak elev (m)",
-                }
-            ),
-            width="stretch",
-            hide_index=True,
-        )
+            peak_scores = peak_scores[peak_scores["score"] >= min_score_visible].reset_index(drop=True)
+            if peak_scores.empty:
+                st.warning("No peaks pass the minimum score filter. Lower the threshold.")
+                return
 
-        route_distance = render_map_block(
-            peak_scores=peak_scores,
-            title="Interactive map (clear route + comparable bubbles/cylinders)",
-            show_bubbles=show_bubbles,
-            show_cylinders=show_cylinders,
-            show_circuit=show_circuit,
-            color_metric_mode=color_metric_mode,
-            visual_radius_m=visual_radius_m,
-            basemap_style=basemap_style,
-            min_score_for_circuit=min_score_for_circuit,
-            max_circuit_points=max_circuit_points,
-            key_suffix="single_hour",
-        )
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Peaks shown", f"{len(peak_scores)}")
+            col2.metric("Top score", f"{peak_scores['score'].max():.1f}")
+            col3.metric("Mean score", f"{peak_scores['score'].mean():.1f}")
 
-        if route_distance > 0:
-            st.info(f"Suggested high-score chain distance: {route_distance:.1f} km")
-        elif show_circuit:
-            st.info("No suggested circuit found for the current score threshold. Try lowering it.")
-
-        selected_peak_name = st.selectbox("Inspect sounding for one peak", options=peak_scores["name"].tolist(), index=0)
-        selected_peak = peak_scores[peak_scores["name"] == selected_peak_name].iloc[0]
-        profile_fig = make_profile_plot(
-            peak_name=str(selected_peak["name"]),
-            lat=float(selected_peak["lat"]),
-            lon=float(selected_peak["lon"]),
-            when=selected_time,
-            forecast_days=forecast_days,
-        )
-        st.plotly_chart(profile_fig, width="stretch")
-    else:
-        st.info(
-            "Forecast horizon compares each next day at the same local hour. "
-            "This makes day-to-day changes directly comparable."
-        )
-        day_time_map = choose_daily_times(all_times, daily_target_hour)
-        ordered_days = sorted(day_time_map.keys())
-        day_results: List[Tuple[str, pd.Timestamp, pd.DataFrame]] = []
-
-        with st.spinner("Computing daily horizon maps..."):
-            for day_key in ordered_days:
-                ts = day_time_map[day_key]
-                scores = build_peak_hour_table(peaks, ts, forecast_days)
-                scores = scores[scores["score"] >= min_score_visible].reset_index(drop=True)
-                if not scores.empty:
-                    day_results.append((day_key, ts, scores))
-
-        if not day_results:
-            st.warning("No data available for the selected horizon settings.")
-            return
-
-        if timelapse_enabled:
-            st.markdown("### Forecast movie")
-            st.caption(
-                "Plays each day in sequence at the same local hour to visualize weather evolution."
+            st.subheader("Top peaks by smooth thermal potential")
+            st.dataframe(
+                peak_scores[["name", "area", "score", "mean_dep_c", "max_dep_c", "driest_layer_hpa", "dry_top_hpa", "dry_bottom_hpa", "elev_m"]]
+                .rename(
+                    columns={
+                        "name": "Peak",
+                        "area": "Area",
+                        "score": "Score",
+                        "mean_dep_c": "Mean T-Td (C)",
+                        "max_dep_c": "Max T-Td (C)",
+                        "driest_layer_hpa": "Driest layer (hPa)",
+                        "dry_top_hpa": "Dry top (hPa)",
+                        "dry_bottom_hpa": "Dry bottom (hPa)",
+                        "elev_m": "Peak elev (m)",
+                    }
+                ),
+                width="stretch",
+                hide_index=True,
             )
-            if st.button("Play movie", type="primary"):
-                title_slot = st.empty()
-                map_slot = st.empty()
-                progress_slot = st.empty()
-                total_frames = len(day_results) * timelapse_loops
-                frame_counter = 0
 
-                for loop_idx in range(timelapse_loops):
-                    for day_key, ts, scores in day_results:
-                        frame_counter += 1
-                        title_slot.markdown(
-                            f"#### Frame {frame_counter}/{total_frames}: {day_key} ({ts.strftime('%H:%M')})"
+            route_distance = render_map_block(
+                peak_scores=peak_scores,
+                title="Interactive map (clear route + comparable bubbles/cylinders)",
+                show_bubbles=show_bubbles,
+                show_cylinders=show_cylinders,
+                show_circuit=show_circuit,
+                color_metric_mode=color_metric_mode,
+                visual_radius_m=visual_radius_m,
+                bubble_opacity=bubble_opacity,
+                cylinder_opacity=cylinder_opacity,
+                route_opacity=route_opacity,
+                route_width_m=route_width_m,
+                cylinder_height_scale=cylinder_height_scale,
+                map_zoom=map_zoom,
+                map_pitch=map_pitch,
+                basemap_style=basemap_style,
+                min_score_for_circuit=min_score_for_circuit,
+                max_circuit_points=max_circuit_points,
+                key_suffix="single_hour",
+            )
+
+            if route_distance > 0:
+                st.info(f"Suggested high-score chain distance: {route_distance:.1f} km")
+            elif show_circuit:
+                st.info("No suggested circuit found for the current score threshold. Try lowering it.")
+
+            selected_peak_name = st.selectbox("Inspect sounding for one peak", options=peak_scores["name"].tolist(), index=0)
+            selected_peak = peak_scores[peak_scores["name"] == selected_peak_name].iloc[0]
+            profile_fig = make_profile_plot(
+                peak_name=str(selected_peak["name"]),
+                lat=float(selected_peak["lat"]),
+                lon=float(selected_peak["lon"]),
+                when=selected_time,
+                forecast_days=forecast_days,
+            )
+            st.plotly_chart(profile_fig, width="stretch")
+        else:
+            st.info(
+                "Forecast horizon compares each next day at the same local hour. "
+                "This makes day-to-day changes directly comparable."
+            )
+            day_time_map = choose_daily_times(all_times, daily_target_hour)
+            ordered_days = sorted(day_time_map.keys())
+            day_results: List[Tuple[str, pd.Timestamp, pd.DataFrame]] = []
+
+            with st.spinner("Computing daily horizon maps..."):
+                for day_key in ordered_days:
+                    ts = day_time_map[day_key]
+                    scores = build_peak_hour_table(peaks, ts, forecast_days)
+                    scores = scores[scores["score"] >= min_score_visible].reset_index(drop=True)
+                    if not scores.empty:
+                        day_results.append((day_key, ts, scores))
+
+            if not day_results:
+                st.warning("No data available for the selected horizon settings.")
+                return
+
+            if timelapse_enabled:
+                st.markdown("### Forecast movie")
+                st.caption(
+                    "Plays each day in sequence at the same local hour to visualize weather evolution."
+                )
+                if st.button("Play movie", type="primary"):
+                    title_slot = st.empty()
+                    map_slot = st.empty()
+                    progress_slot = st.empty()
+                    total_frames = len(day_results) * timelapse_loops
+                    frame_counter = 0
+
+                    for loop_idx in range(timelapse_loops):
+                        for day_key, ts, scores in day_results:
+                            frame_counter += 1
+                            title_slot.markdown(
+                                f"#### Frame {frame_counter}/{total_frames}: {day_key} ({ts.strftime('%H:%M')})"
+                            )
+                            deck, _ = build_deck(
+                                peak_scores=scores,
+                                show_bubbles=show_bubbles,
+                                show_cylinders=show_cylinders,
+                                show_circuit=show_circuit,
+                                color_metric_mode=color_metric_mode,
+                                visual_radius_m=visual_radius_m,
+                                bubble_opacity=bubble_opacity,
+                                cylinder_opacity=cylinder_opacity,
+                                route_opacity=route_opacity,
+                                route_width_m=route_width_m,
+                                cylinder_height_scale=cylinder_height_scale,
+                                map_zoom=map_zoom,
+                                map_pitch=map_pitch,
+                                basemap_style=basemap_style,
+                                min_score_for_circuit=min_score_for_circuit,
+                                max_circuit_points=max_circuit_points,
+                            )
+                            map_slot.pydeck_chart(deck, width="stretch")
+                            progress_slot.progress(frame_counter / total_frames)
+                            time.sleep(timelapse_seconds)
+
+                    st.success("Forecast movie completed.")
+
+            if horizon_layout == "Tabs":
+                tabs = st.tabs([f"{d} ({t.strftime('%H:%M')})" for d, t, _ in day_results])
+                for tab, (day_key, ts, scores) in zip(tabs, day_results):
+                    with tab:
+                        st.write(f"Local forecast hour: {ts.strftime('%Y-%m-%d %H:%M')}")
+                        st.dataframe(
+                            scores[["name", "area", "score", "driest_layer_hpa", "dry_top_hpa", "dry_bottom_hpa"]]
+                            .rename(
+                                columns={
+                                    "name": "Peak",
+                                    "area": "Area",
+                                    "score": "Score",
+                                    "driest_layer_hpa": "Driest layer",
+                                    "dry_top_hpa": "Dry top",
+                                    "dry_bottom_hpa": "Dry bottom",
+                                }
+                            )
+                            .head(12),
+                            width="stretch",
+                            hide_index=True,
                         )
-                        deck, _ = build_deck(
+                        render_map_block(
                             peak_scores=scores,
+                            title=f"Daily horizon map - {day_key}",
                             show_bubbles=show_bubbles,
                             show_cylinders=show_cylinders,
                             show_circuit=show_circuit,
                             color_metric_mode=color_metric_mode,
                             visual_radius_m=visual_radius_m,
+                            bubble_opacity=bubble_opacity,
+                            cylinder_opacity=cylinder_opacity,
+                            route_opacity=route_opacity,
+                            route_width_m=route_width_m,
+                            cylinder_height_scale=cylinder_height_scale,
+                            map_zoom=map_zoom,
+                            map_pitch=map_pitch,
                             basemap_style=basemap_style,
                             min_score_for_circuit=min_score_for_circuit,
                             max_circuit_points=max_circuit_points,
+                            key_suffix=f"tab_{day_key}",
                         )
-                        map_slot.pydeck_chart(deck, width="stretch")
-                        progress_slot.progress(frame_counter / total_frames)
-                        time.sleep(timelapse_seconds)
-
-                st.success("Forecast movie completed.")
-
-        if horizon_layout == "Tabs":
-            tabs = st.tabs([f"{d} ({t.strftime('%H:%M')})" for d, t, _ in day_results])
-            for tab, (day_key, ts, scores) in zip(tabs, day_results):
-                with tab:
-                    st.write(f"Local forecast hour: {ts.strftime('%Y-%m-%d %H:%M')}")
-                    st.dataframe(
-                        scores[["name", "area", "score", "driest_layer_hpa", "dry_top_hpa", "dry_bottom_hpa"]]
-                        .rename(
-                            columns={
-                                "name": "Peak",
-                                "area": "Area",
-                                "score": "Score",
-                                "driest_layer_hpa": "Driest layer",
-                                "dry_top_hpa": "Dry top",
-                                "dry_bottom_hpa": "Dry bottom",
-                            }
-                        )
-                        .head(12),
-                        width="stretch",
-                        hide_index=True,
-                    )
+            else:
+                for day_key, ts, scores in day_results:
+                    st.markdown(f"### {day_key} ({ts.strftime('%H:%M')})")
                     render_map_block(
                         peak_scores=scores,
                         title=f"Daily horizon map - {day_key}",
@@ -779,27 +884,18 @@ def main() -> None:
                         show_circuit=show_circuit,
                         color_metric_mode=color_metric_mode,
                         visual_radius_m=visual_radius_m,
+                        bubble_opacity=bubble_opacity,
+                        cylinder_opacity=cylinder_opacity,
+                        route_opacity=route_opacity,
+                        route_width_m=route_width_m,
+                        cylinder_height_scale=cylinder_height_scale,
+                        map_zoom=map_zoom,
+                        map_pitch=map_pitch,
                         basemap_style=basemap_style,
                         min_score_for_circuit=min_score_for_circuit,
                         max_circuit_points=max_circuit_points,
-                        key_suffix=f"tab_{day_key}",
+                        key_suffix=f"stack_{day_key}",
                     )
-        else:
-            for day_key, ts, scores in day_results:
-                st.markdown(f"### {day_key} ({ts.strftime('%H:%M')})")
-                render_map_block(
-                    peak_scores=scores,
-                    title=f"Daily horizon map - {day_key}",
-                    show_bubbles=show_bubbles,
-                    show_cylinders=show_cylinders,
-                    show_circuit=show_circuit,
-                    color_metric_mode=color_metric_mode,
-                    visual_radius_m=visual_radius_m,
-                    basemap_style=basemap_style,
-                    min_score_for_circuit=min_score_for_circuit,
-                    max_circuit_points=max_circuit_points,
-                    key_suffix=f"stack_{day_key}",
-                )
 
     st.caption(
         "Important: This score is a meteorological heuristic, not a flight safety guarantee. "
